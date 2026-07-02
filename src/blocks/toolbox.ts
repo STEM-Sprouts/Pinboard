@@ -43,6 +43,9 @@ const CATEGORIES: Array<{
       { type: 'pot_read', minMode: 'beginner' },
       { type: 'pot_map', minMode: 'beginner' },
       { type: 'pot_above', minMode: 'beginner' },
+      { type: 'buzzer_play', minMode: 'beginner' },
+      { type: 'buzzer_stop', minMode: 'beginner' },
+      { type: 'servo_set_angle', minMode: 'beginner' },
     ],
   },
   {

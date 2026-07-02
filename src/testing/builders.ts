@@ -119,3 +119,7 @@ export function program(parts: Partial<Pick<ProgramIR, 'boardId' | 'includes' | 
     },
   };
 }
+
+export const tone = (pin: PinId, frequency: ExpressionIR, durationMs?: ExpressionIR): StatementIR =>
+  durationMs === undefined ? { kind: 'tone', pin, frequency } : { kind: 'tone', pin, frequency, durationMs };
+export const noTone = (pin: PinId): StatementIR => ({ kind: 'noTone', pin });

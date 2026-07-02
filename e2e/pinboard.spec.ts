@@ -478,3 +478,15 @@ test.describe('cloud is optional (ADR-0006/0007)', () => {
     await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
   });
 });
+
+test.describe('buzzer and servo components (Phase 3)', () => {
+  test('add a buzzer and a servo: visuals render with default pins', async ({ page }) => {
+    await page.getByTestId('add-buzzer').click();
+    await expect(page.getByTestId('buzzer-8')).toBeVisible();
+    await expect(page.getByTestId('buzzer-8')).toContainText('silent');
+
+    await page.getByTestId('add-servo').click();
+    await expect(page.getByTestId('servo-9')).toBeVisible();
+    await expect(page.getByTestId('servo-9')).toContainText('90°');
+  });
+});

@@ -111,3 +111,40 @@ describe('component binding diagnostics', () => {
     expect(covered).toEqual([]);
   });
 });
+
+describe('timer-conflict warnings (hardware.md §2 timerNotes)', () => {
+  it('warns when servo is used alongside PWM on D9/D10 (Timer1)', async () => {
+    const { analyzeProgramDiagnostics } = await import('./diagnostics');
+    const { arduinoUno } = await import('./boards/arduinoUno');
+    const { program, servoAttach, servoWrite, analogWrite, num } = await import('../testing/builders');
+    const prog = program({
+      setup: [servoAttach('arm', 'D3')],
+      loop: [servoWrite('arm', num(90)), analogWrite('D9', 128)],
+    });
+    const diagnostics = analyzeProgramDiagnostics(prog, arduinoUno);
+    expect(diagnostics.some((d) => d.id === 'servo-timer1-pwm-9-10' && d.severity === 'warning')).toBe(true);
+  });
+
+  it('warns when tone is used alongside PWM on D3/D11 (Timer2)', async () => {
+    const { analyzeProgramDiagnostics } = await import('./diagnostics');
+    const { arduinoUno } = await import('./boards/arduinoUno');
+    const { program, tone, analogWrite, num } = await import('../testing/builders');
+    const prog = program({
+      loop: [tone('D8', num(440)), analogWrite('D11', 100)],
+    });
+    const diagnostics = analyzeProgramDiagnostics(prog, arduinoUno);
+    expect(diagnostics.some((d) => d.id === 'tone-timer2-pwm-3-11' && d.severity === 'warning')).toBe(true);
+  });
+
+  it('stays quiet when servo/tone do not share timer pins with PWM', async () => {
+    const { analyzeProgramDiagnostics } = await import('./diagnostics');
+    const { arduinoUno } = await import('./boards/arduinoUno');
+    const { program, servoAttach, servoWrite, analogWrite, num } = await import('../testing/builders');
+    const prog = program({
+      setup: [servoAttach('arm', 'D9')],
+      loop: [servoWrite('arm', num(90)), analogWrite('D6', 128)],
+    });
+    const diagnostics = analyzeProgramDiagnostics(prog, arduinoUno);
+    expect(diagnostics.some((d) => d.title === 'Timer conflict')).toBe(false);
+  });
+});

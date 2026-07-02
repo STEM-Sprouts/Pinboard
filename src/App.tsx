@@ -62,6 +62,8 @@ function App({ localId }: { localId?: string } = {}) {
 
   const [emulatorStatus, setEmulatorStatus] = useState<'idle' | 'compiling' | 'running' | 'error'>('idle');
   const [pinStates, setPinStates] = useState<Record<string, boolean>>({});
+  const [toneStates, setToneStates] = useState<Record<string, number | null>>({});
+  const [servoAngles, setServoAngles] = useState<Record<string, number>>({});
   const [buttonPressed, setButtonPressed] = useState<Record<string, boolean>>({});
   const [potValues, setPotValues] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string[]>([]);
@@ -137,6 +139,8 @@ function App({ localId }: { localId?: string } = {}) {
     schedulerRef.current?.stop();
     detachRuntimeListeners();
     setPinStates({});
+    setToneStates({});
+    setServoAngles({});
     setSerialOutput([]);
 
     const scheduler = new RuntimeScheduler(createBrowserSchedulerDeps(), { board: arduinoUno });
@@ -156,8 +160,13 @@ function App({ localId }: { localId?: string } = {}) {
 
     unsubscribersRef.current.push(
       scheduler.ctx.pins.onChange((event) => {
-        if (event.kind !== 'digital') return;
-        setPinStates((prev) => ({ ...prev, [event.pin]: event.value as boolean }));
+        if (event.kind === 'digital') {
+          setPinStates((prev) => ({ ...prev, [event.pin]: event.value as boolean }));
+        } else if (event.kind === 'tone') {
+          setToneStates((prev) => ({ ...prev, [event.pin]: event.value as number | null }));
+        } else if (event.kind === 'servo') {
+          setServoAngles((prev) => ({ ...prev, [event.pin]: event.value as number }));
+        }
       }),
       scheduler.ctx.serial.onLine((line) => {
         setSerialOutput((prev) => {
@@ -186,6 +195,8 @@ function App({ localId }: { localId?: string } = {}) {
     schedulerRef.current = null;
     setEmulatorStatus('idle');
     setPinStates({});
+    setToneStates({});
+    setServoAngles({});
     setSerialOutput([]);
   }, []);
 
@@ -339,6 +350,8 @@ function App({ localId }: { localId?: string } = {}) {
             board={arduinoUno}
             components={components}
             pinStates={pinStates}
+            toneStates={toneStates}
+            servoAngles={servoAngles}
             buttonPressed={buttonPressed}
             potValues={potValues}
             serialOutput={serialOutput}

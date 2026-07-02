@@ -292,6 +292,57 @@ export const defineBlocks = () => {
     },
   };
 
+  Blockly.Blocks['buzzer_play'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('play')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('buzzer', '(add a Buzzer first)')),
+          'COMPONENT',
+        )
+        .appendField('at')
+        .appendField(new Blockly.FieldNumber(440, 31, 65535, 1), 'FREQ')
+        .appendField('Hz');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Start a tone on the buzzer — it keeps sounding until you stop it');
+    },
+  };
+
+  Blockly.Blocks['buzzer_stop'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('stop')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('buzzer', '(add a Buzzer first)')),
+          'COMPONENT',
+        );
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Silence the buzzer (noTone)');
+    },
+  };
+
+  Blockly.Blocks['servo_set_angle'] = {
+    init(this: Blockly.Block) {
+      this.appendValueInput('ANGLE')
+        .setCheck('Number')
+        .appendField('set')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('servo', '(add a Servo first)')),
+          'COMPONENT',
+        )
+        .appendField('angle to');
+      this.setInputsInline(true);
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn the servo arm to an angle, 0–180 degrees');
+    },
+  };
+
   Blockly.Blocks['pot_map'] = {
     init(this: Blockly.Block) {
       this.appendDummyInput()

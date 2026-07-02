@@ -9,20 +9,24 @@
 import type { ComponentInstance, ComponentType } from '../persistence/projectDocument';
 import type { BoardProfile, PinId } from './types';
 
-export type PlaceableComponentType = Extract<ComponentType, 'led' | 'button' | 'potentiometer'>;
+export type PlaceableComponentType = Extract<ComponentType, 'led' | 'button' | 'potentiometer' | 'buzzer' | 'servo'>;
 
-export const PLACEABLE_TYPES: PlaceableComponentType[] = ['led', 'button', 'potentiometer'];
+export const PLACEABLE_TYPES: PlaceableComponentType[] = ['led', 'button', 'potentiometer', 'buzzer', 'servo'];
 
 export const COMPONENT_LABELS: Record<PlaceableComponentType, string> = {
   led: 'LED',
   button: 'Button',
   potentiometer: 'Potentiometer',
+  buzzer: 'Buzzer',
+  servo: 'Servo',
 };
 
 const DEFAULT_CONFIG: Record<PlaceableComponentType, Record<string, unknown>> = {
   led: { color: 'red', activeHigh: true },
   button: { pullMode: 'internal_pullup' },
   potentiometer: {},
+  buzzer: {},
+  servo: {},
 };
 
 /** Pins a component's signal may attach to on this board. */
@@ -68,10 +72,14 @@ export function createComponent(
   existing: ComponentInstance[],
   board: BoardProfile,
 ): ComponentInstance {
+  // Servo prefers D9 (a classic wiring; it does NOT need PWM — hardware.md §2);
+  // the buzzer avoids D3/D11 so tone() stays clear of Timer2 PWM by default.
   const preferred: Record<PlaceableComponentType, PinId[]> = {
     led: ['D13', 'D12', 'D11', 'D10'],
     button: ['D2', 'D3', 'D4', 'D7'],
     potentiometer: ['A0', 'A1', 'A2'],
+    buzzer: ['D8', 'D7', 'D4'],
+    servo: ['D9', 'D6', 'D5'],
   };
   const safeAllowed = allowedPins(type, board).filter((pin) => !board.reservedPins.serial.includes(pin));
   const pin =

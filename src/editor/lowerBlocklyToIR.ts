@@ -53,6 +53,8 @@ type Ctx = {
    * they are excluded from the globals (reads inside the body resolve to
    * the loop-local in the printed C). */
   loopVariables: Set<string>;
+  /** One servoAttach per used servo instance, emitted into setup(). */
+  servoAttaches: Map<string, StatementIR>;
 };
 
 const ARITH_OPS: Record<string, '+' | '-' | '*' | '/' | '%'> = {
@@ -370,6 +372,35 @@ function lowerStatement(block: BlocklyBlockJson, ctx: Ctx): StatementIR[] {
         },
       ];
     }
+    case 'buzzer_play': {
+      const resolved = resolveComponent(block, 'buzzer', 'Buzzer', ctx);
+      if (!resolved) return [];
+      return [
+        {
+          kind: 'tone',
+          pin: resolved.pin,
+          frequency: { kind: 'num', value: Math.max(0, numField(block, 'FREQ', 440)) },
+        },
+      ];
+    }
+    case 'buzzer_stop': {
+      const resolved = resolveComponent(block, 'buzzer', 'Buzzer', ctx);
+      if (!resolved) return [];
+      return [{ kind: 'noTone', pin: resolved.pin }];
+    }
+    case 'servo_set_angle': {
+      const resolved = resolveComponent(block, 'servo', 'Servo', ctx);
+      if (!resolved) return [];
+      const servoId = resolved.instance.displayName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'servo';
+      if (!ctx.servoAttaches.has(resolved.instance.id)) {
+        ctx.servoAttaches.set(resolved.instance.id, { kind: 'servoAttach', servoId, pin: resolved.pin });
+      }
+      let angle = lowerValue(inputBlock(block, 'ANGLE'), { kind: 'num', value: 90 }, ctx);
+      // Real Servo.write clamps to 0–180; clamp literals so the preview
+      // shows the value the servo will actually take.
+      if (angle.kind === 'num') angle = { kind: 'num', value: Math.min(180, Math.max(0, angle.value)) };
+      return [{ kind: 'servoWrite', servoId, angle }];
+    }
     case 'set_pwm': {
       const pin = digitalPin(numField(block, 'PIN', 9), ctx, block.id);
       return [
@@ -487,6 +518,7 @@ export function lowerWorkspaceToIR(
     variableNames,
     usedVariables: new Set(),
     loopVariables: new Set(),
+    servoAttaches: new Map(),
   };
   const setup: StatementIR[] = [];
   const loop: StatementIR[] = [];
@@ -529,7 +561,7 @@ export function lowerWorkspaceToIR(
       boardId: 'arduino-uno',
       includes: [],
       globals,
-      setup: [...inputModes, ...setup],
+      setup: [...inputModes, ...ctx.servoAttaches.values(), ...setup],
       loop,
       // Fixed metadata: the printer must stay a deterministic function of
       // the workspace content (generated C is cache, not truth).

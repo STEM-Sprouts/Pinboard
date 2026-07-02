@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   blinkExpectedC,
+  buzzerAlarmExpectedC,
+  buzzerAlarmProgram,
   potBrightnessExpectedC,
   potBrightnessProgram,
   blinkProgram,
@@ -43,6 +45,10 @@ describe('IR → Arduino C printer', () => {
 
   it('prints the button-controls-led fixture', () => {
     expect(printArduino(buttonControlsLedProgram).code).toBe(buttonControlsLedExpectedC);
+  });
+
+  it('prints the buzzer-alarm fixture', () => {
+    expect(printArduino(buzzerAlarmProgram).code).toBe(buzzerAlarmExpectedC);
   });
 
   it('prints the potentiometer-brightness fixture', () => {

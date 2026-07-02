@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { printArduino } from '../src/arduino/printArduino';
 import {
   blinkProgram,
+  buzzerAlarmProgram,
   blinkWithoutDelayProgram,
   buttonControlsLedProgram,
   potBrightnessProgram,
@@ -21,6 +22,7 @@ const fixtures: Record<string, ProgramIR> = {
   blink: blinkProgram,
   'blink-without-delay': blinkWithoutDelayProgram,
   'button-controls-led': buttonControlsLedProgram,
+  'buzzer-alarm': buzzerAlarmProgram,
   'potentiometer-brightness': potBrightnessProgram,
   'servo-sweep': servoSweepProgram,
 };

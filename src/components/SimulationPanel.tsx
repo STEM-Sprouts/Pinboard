@@ -17,6 +17,10 @@ interface SimProps {
   components: ComponentInstance[];
   /** Electrical digital level per pin, from the runtime's pin store. */
   pinStates: Record<string, boolean>;
+  /** Active tone frequency per pin (null = silent), from tone/noTone. */
+  toneStates: Record<string, number | null>;
+  /** Servo angle per pin, 0–180, from servo writes. */
+  servoAngles: Record<string, number>;
   buttonPressed: Record<string, boolean>;
   potValues: Record<string, number>;
   serialOutput: string[];
@@ -43,6 +47,8 @@ export default function SimulationPanel({
   board,
   components,
   pinStates,
+  toneStates,
+  servoAngles,
   buttonPressed,
   potValues,
   serialOutput,
@@ -96,6 +102,42 @@ export default function SimulationPanel({
             />
             <span className="text-xs font-mono font-bold text-gray-500">
               {pinTag(pin)} · {value}
+            </span>
+          </div>
+        );
+      }
+      case 'buzzer': {
+        const freq = pin ? (toneStates[pin] ?? null) : null;
+        return (
+          <div
+            data-testid={`buzzer-${pinSuffix}`}
+            data-freq={freq ?? ''}
+            className="flex flex-col items-center gap-1 p-3 border border-gray-100 rounded-lg bg-gray-50 shadow-sm w-full"
+          >
+            <span className={`text-2xl ${freq ? 'animate-pulse' : 'opacity-30'}`}>🔊</span>
+            <span className="text-xs font-mono font-bold text-gray-500">
+              {pinTag(pin)} · {freq ? `${freq} Hz` : 'silent'}
+            </span>
+          </div>
+        );
+      }
+      case 'servo': {
+        const angle = pin ? (servoAngles[pin] ?? 90) : 90;
+        return (
+          <div
+            data-testid={`servo-${pinSuffix}`}
+            data-angle={angle}
+            className="flex flex-col items-center gap-1 p-3 border border-gray-100 rounded-lg bg-gray-50 shadow-sm w-full"
+          >
+            <div className="relative w-16 h-8 overflow-hidden">
+              <div
+                className="absolute bottom-0 left-1/2 w-0.5 h-7 bg-gray-700 origin-bottom transition-transform"
+                style={{ transform: `translateX(-50%) rotate(${angle - 90}deg)` }}
+              />
+              <div className="absolute bottom-0 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-gray-400" />
+            </div>
+            <span className="text-xs font-mono font-bold text-gray-500">
+              {pinTag(pin)} · {angle}°
             </span>
           </div>
         );

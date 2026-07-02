@@ -752,3 +752,82 @@ describe('component convenience blocks (codegen.md §5 Components)', () => {
     expect(printArduino(above.program).code).toContain('if (analogRead(A0) > 512) {');
   });
 });
+
+describe('buzzer and servo component blocks (Phase 3, hardware.md §3)', () => {
+  const makeBuzzer = (id: string, pin: PinId | null): ComponentInstance => ({
+    id,
+    type: 'buzzer',
+    displayName: 'Buzzer 1',
+    position: { x: 0, y: 0 },
+    config: {},
+    pins: { signal: pin },
+  });
+  const makeServo = (id: string, pin: PinId | null): ComponentInstance => ({
+    id,
+    type: 'servo',
+    displayName: 'Servo 1',
+    position: { x: 0, y: 0 },
+    config: {},
+    pins: { signal: pin },
+  });
+  const inLoop = (block: object): BlocklyWorkspaceJson => ({
+    blocks: { languageVersion: 0, blocks: [{ type: 'arduino_loop', inputs: { DO: { block: block as never } } }] },
+  });
+
+  it('buzzer_play and buzzer_stop lower to tone/noTone on the instance pin', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({
+        type: 'buzzer_play',
+        fields: { COMPONENT: 'bz1', FREQ: 880 },
+        next: { block: { type: 'buzzer_stop', fields: { COMPONENT: 'bz1' } } },
+      }),
+      [makeBuzzer('bz1', 'D8')],
+    );
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toMatchObject({ kind: 'tone', pin: 'D8', frequency: { kind: 'num', value: 880 } });
+    expect(program.loop[1]).toMatchObject({ kind: 'noTone', pin: 'D8' });
+    const { code } = printArduino(program);
+    expect(code).toContain('tone(8, 880);');
+    expect(code).toContain('noTone(8);');
+  });
+
+  it('servo_set_angle writes the angle and gets one attach in setup()', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({
+        type: 'servo_set_angle',
+        fields: { COMPONENT: 'sv1' },
+        inputs: { ANGLE: { block: { type: 'num_value', fields: { NUM: 90 } } } },
+        next: {
+          block: {
+            type: 'servo_set_angle',
+            fields: { COMPONENT: 'sv1' },
+            inputs: { ANGLE: { block: { type: 'num_value', fields: { NUM: 45 } } } },
+          },
+        },
+      }),
+      [makeServo('sv1', 'D9')],
+    );
+    expect(diagnostics).toEqual([]);
+    const attaches = program.setup.filter((s) => s.kind === 'servoAttach');
+    expect(attaches).toHaveLength(1);
+    expect(attaches[0]).toMatchObject({ kind: 'servoAttach', servoId: 'servo1', pin: 'D9' });
+    expect(program.loop[0]).toMatchObject({ kind: 'servoWrite', servoId: 'servo1', angle: { kind: 'num', value: 90 } });
+    const { code } = printArduino(program);
+    expect(code).toContain('#include <Servo.h>');
+    expect(code).toContain('Servo servo1;');
+    expect(code).toContain('servo1.attach(9);');
+    expect(code).toContain('servo1.write(90);');
+  });
+
+  it('servo angle literals clamp to 0–180', () => {
+    const { program } = lowerWorkspaceToIR(
+      inLoop({
+        type: 'servo_set_angle',
+        fields: { COMPONENT: 'sv1' },
+        inputs: { ANGLE: { block: { type: 'num_value', fields: { NUM: 700 } } } },
+      }),
+      [makeServo('sv1', 'D9')],
+    );
+    expect(program.loop[0]).toMatchObject({ kind: 'servoWrite', angle: { kind: 'num', value: 180 } });
+  });
+});
