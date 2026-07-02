@@ -172,6 +172,13 @@ export function analyzeComponentDiagnostics(
   walkStatements([...program.setup, ...program.loop], (stmt) => {
     if (stmt.kind === 'digitalWrite' || stmt.kind === 'analogWrite') writtenPins.add(stmt.pin);
   });
+  // Quick-fix candidates: LEDs whose own pin the program never writes —
+  // the classic "LED on D12, block writes D13" mismatch (hardware.md §6).
+  const idleLeds = components.filter((c) => {
+    const pin = signalPin(c);
+    return c.type === 'led' && pin !== null && !writtenPins.has(pin);
+  });
+
   for (const pin of writtenPins) {
     if (!byPin.has(pin)) {
       diagnostics.push({
@@ -179,6 +186,14 @@ export function analyzeComponentDiagnostics(
         severity: 'warning',
         title: `Nothing is connected to ${pin}`,
         message: `Your program writes to ${pin}, but no visible component is connected to it. The Arduino will still set the pin, but nothing in the simulator will visibly change.`,
+        // Offer a fix only when it is unambiguous; the click stays the student's.
+        fix:
+          idleLeds.length === 1
+            ? {
+                label: `Move ${idleLeds[0].displayName} to ${pin}`,
+                action: { kind: 'setComponentPin', componentId: idleLeds[0].id, pin },
+              }
+            : undefined,
         source: { pin },
       });
     }

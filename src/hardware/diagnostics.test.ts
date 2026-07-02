@@ -148,3 +148,43 @@ describe('timer-conflict warnings (hardware.md §2 timerNotes)', () => {
     expect(diagnostics.some((d) => d.title === 'Timer conflict')).toBe(false);
   });
 });
+
+describe('quick fixes (hardware.md §6): diagnose, offer, never auto-apply', () => {
+  it('write-without-component offers "move the idle LED here" when exactly one candidate exists', async () => {
+    const { analyzeComponentDiagnostics } = await import('./diagnostics');
+    const { program, digitalWrite } = await import('../testing/builders');
+    const led = {
+      id: 'led-a',
+      type: 'led' as const,
+      displayName: 'LED 1',
+      position: { x: 0, y: 0 },
+      config: { activeHigh: true },
+      pins: { signal: 'D12' as const },
+    };
+    const prog = program({ loop: [digitalWrite('D13', true)] });
+    const diagnostics = analyzeComponentDiagnostics(prog, [led]);
+    const warning = diagnostics.find((d) => d.id === 'write-without-component:D13');
+    expect(warning?.fix).toEqual({
+      label: 'Move LED 1 to D13',
+      action: { kind: 'setComponentPin', componentId: 'led-a', pin: 'D13' },
+    });
+  });
+
+  it('offers no fix when the candidate is ambiguous (two idle LEDs)', async () => {
+    const { analyzeComponentDiagnostics } = await import('./diagnostics');
+    const { program, digitalWrite } = await import('../testing/builders');
+    const mk = (id: string, pin: 'D11' | 'D12') => ({
+      id,
+      type: 'led' as const,
+      displayName: id,
+      position: { x: 0, y: 0 },
+      config: { activeHigh: true },
+      pins: { signal: pin },
+    });
+    const prog = program({ loop: [digitalWrite('D13', true)] });
+    const diagnostics = analyzeComponentDiagnostics(prog, [mk('led-a', 'D12'), mk('led-b', 'D11')]);
+    const warning = diagnostics.find((d) => d.id === 'write-without-component:D13');
+    expect(warning).toBeDefined();
+    expect(warning?.fix).toBeUndefined();
+  });
+});

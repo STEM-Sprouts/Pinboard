@@ -9,7 +9,7 @@ import Button from './Button';
 import PinPicker from './PinPicker';
 import SerialMonitor from './SerialMonitor';
 import { allowedPins, buttonUsesPullup, ledIsActiveHigh, signalPin, COMPONENT_LABELS, PLACEABLE_TYPES, type PlaceableComponentType } from '../hardware/components';
-import type { BoardProfile, Diagnostic, PinId } from '../hardware/types';
+import type { BoardProfile, Diagnostic, DiagnosticFixAction, PinId } from '../hardware/types';
 import type { ComponentInstance } from '../persistence/projectDocument';
 
 interface SimProps {
@@ -31,6 +31,7 @@ interface SimProps {
   onSetLedActiveHigh: (id: string, activeHigh: boolean) => void;
   onButtonPress: (instance: ComponentInstance, pressed: boolean) => void;
   onPotChange: (instance: ComponentInstance, value: number) => void;
+  onApplyFix: (action: DiagnosticFixAction) => void;
 }
 
 const SEVERITY_STYLES: Record<Diagnostic['severity'], string> = {
@@ -59,6 +60,7 @@ export default function SimulationPanel({
   onSetLedActiveHigh,
   onButtonPress,
   onPotChange,
+  onApplyFix,
 }: SimProps) {
   const usedByFor = (self: ComponentInstance): Map<PinId, string> => {
     const used = new Map<PinId, string>();
@@ -218,6 +220,15 @@ export default function SimulationPanel({
               {diagnostics.map((d) => (
                 <li key={d.id} className={`text-xs rounded-md border p-2 ${SEVERITY_STYLES[d.severity]}`}>
                   <span className="font-semibold">{d.title}.</span> {d.message}
+                  {d.fix && (
+                    <button
+                      data-testid={`fix-${d.id}`}
+                      onClick={() => onApplyFix(d.fix!.action)}
+                      className="block mt-1.5 px-2 py-1 rounded border border-current font-semibold hover:bg-white/60"
+                    >
+                      {d.fix.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

@@ -42,8 +42,9 @@ export type BoardProfile = {
   timerNotes: TimerConflictRule[];
 };
 
-/** Placeholder until quick fixes are built in Phase 1 (hardware.md §6). */
-export type DiagnosticFixAction = unknown;
+/** Quick-fix actions (hardware.md §6). Offered on the diagnostic, applied
+ * only when the student clicks — never silently (the mistake is the lesson). */
+export type DiagnosticFixAction = { kind: 'setComponentPin'; componentId: string; pin: PinId };
 
 export type Diagnostic = {
   id: string;

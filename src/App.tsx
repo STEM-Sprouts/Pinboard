@@ -16,7 +16,7 @@ import {
   signalPin,
   type PlaceableComponentType,
 } from './hardware/components';
-import type { PinId } from './hardware/types';
+import type { DiagnosticFixAction, PinId } from './hardware/types';
 import { setRegisteredComponents } from './blocks/componentRegistry';
 import { LocalProjectStore } from './persistence/localProjectStore';
 import { buildToolbox } from './blocks/toolbox';
@@ -214,6 +214,14 @@ function App({ localId }: { localId?: string } = {}) {
     setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, pins: { ...c.pins, signal: pin } } : c)));
   }, []);
 
+  const handleApplyFix = useCallback((action: DiagnosticFixAction) => {
+    if (action.kind === 'setComponentPin') {
+      setComponents((prev) =>
+        prev.map((c) => (c.id === action.componentId ? { ...c, pins: { ...c.pins, signal: action.pin } } : c)),
+      );
+    }
+  }, []);
+
   const handleSetLedActiveHigh = useCallback((id: string, activeHigh: boolean) => {
     setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, config: { ...c.config, activeHigh } } : c)));
   }, []);
@@ -362,6 +370,7 @@ function App({ localId }: { localId?: string } = {}) {
             onSetLedActiveHigh={handleSetLedActiveHigh}
             onButtonPress={handleButtonPress}
             onPotChange={handlePotChange}
+            onApplyFix={handleApplyFix}
           />
         </div>
       </div>

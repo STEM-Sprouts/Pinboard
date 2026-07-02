@@ -490,3 +490,19 @@ test.describe('buzzer and servo components (Phase 3)', () => {
     await expect(page.getByTestId('servo-9')).toContainText('90°');
   });
 });
+
+test.describe('diagnostic quick fixes (hardware.md §6)', () => {
+  test('LED-on-wrong-pin offers "Move LED 1 to D13" and applies only on click', async ({ page }) => {
+    // Move the starter LED off D13 — the program still writes D13.
+    await page.getByTestId('pin-picker-starter-led').selectOption('D12');
+    const fix = page.getByTestId('fix-write-without-component:D13');
+    await expect(fix).toBeVisible();
+    await expect(fix).toHaveText('Move LED 1 to D13');
+    // Diagnosed, not auto-fixed: the LED is still on D12 until the click.
+    await expect(page.getByTestId('led-12')).toBeVisible();
+
+    await fix.click();
+    await expect(page.getByTestId('led-13')).toBeVisible();
+    await expect(fix).toHaveCount(0);
+  });
+});
