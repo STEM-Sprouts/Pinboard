@@ -27,8 +27,13 @@ const TOOLBOX_CONFIG = {
       colour: '#9966FF',
       contents: [
         { kind: 'block', type: 'led_set' },
+        { kind: 'block', type: 'led_brightness' },
+        { kind: 'block', type: 'led_blink' },
         { kind: 'block', type: 'button_is_pressed' },
-        { kind: 'block', type: 'pot_read' }
+        { kind: 'block', type: 'button_wait' },
+        { kind: 'block', type: 'pot_read' },
+        { kind: 'block', type: 'pot_map' },
+        { kind: 'block', type: 'pot_above' }
       ]
     },
     {

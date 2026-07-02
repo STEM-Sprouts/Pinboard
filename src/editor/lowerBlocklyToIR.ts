@@ -188,6 +188,31 @@ function lowerValue(block: BlocklyBlockJson | undefined, fallback: ExpressionIR,
       if (!resolved) return fallback;
       return { kind: 'read', op: 'analog', pin: resolved.pin };
     }
+    case 'pot_map': {
+      const resolved = resolveComponent(block, 'potentiometer', 'Potentiometer', ctx);
+      if (!resolved) return fallback;
+      return {
+        kind: 'call',
+        fn: 'map',
+        args: [
+          { kind: 'read', op: 'analog', pin: resolved.pin },
+          { kind: 'num', value: 0 },
+          { kind: 'num', value: 1023 },
+          { kind: 'num', value: numField(block, 'LOW', 0) },
+          { kind: 'num', value: numField(block, 'HIGH', 255) },
+        ],
+      };
+    }
+    case 'pot_above': {
+      const resolved = resolveComponent(block, 'potentiometer', 'Potentiometer', ctx);
+      if (!resolved) return fallback;
+      return {
+        kind: 'binary',
+        op: '>',
+        left: { kind: 'read', op: 'analog', pin: resolved.pin },
+        right: { kind: 'num', value: numField(block, 'THRESHOLD', 512) },
+      };
+    }
     case 'string_text':
       return { kind: 'string', value: strField(block, 'TEXT', '') };
     case 'num_value':
@@ -299,6 +324,51 @@ function lowerStatement(block: BlocklyBlockJson, ctx: Ctx): StatementIR[] {
       // "on" means the LED lights — the electrical level depends on wiring.
       const level = on ? activeHigh : !activeHigh;
       return [{ kind: 'digitalWrite', pin: resolved.pin, value: { kind: 'bool', value: level } }];
+    }
+    case 'led_brightness': {
+      const resolved = resolveComponent(block, 'led', 'LED', ctx);
+      if (!resolved) return [];
+      const value = lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx);
+      // Active-low wiring inverts brightness: full value means off. Emit the
+      // honest arithmetic instead of pretending polarity away.
+      const written: ExpressionIR = ledIsActiveHigh(resolved.instance)
+        ? value
+        : { kind: 'binary', op: '-', left: { kind: 'num', value: 255 }, right: value };
+      return [{ kind: 'analogWrite', pin: resolved.pin, value: written }];
+    }
+    case 'led_blink': {
+      const resolved = resolveComponent(block, 'led', 'LED', ctx);
+      if (!resolved) return [];
+      const ms: ExpressionIR = { kind: 'num', value: Math.max(0, numField(block, 'MS', 500)) };
+      const activeHigh = ledIsActiveHigh(resolved.instance);
+      return [
+        { kind: 'digitalWrite', pin: resolved.pin, value: { kind: 'bool', value: activeHigh } },
+        { kind: 'delay', ms },
+        { kind: 'digitalWrite', pin: resolved.pin, value: { kind: 'bool', value: !activeHigh } },
+        { kind: 'delay', ms },
+      ];
+    }
+    case 'button_wait': {
+      const resolved = resolveComponent(block, 'button', 'Button', ctx);
+      if (!resolved) return [];
+      const pullup = buttonUsesPullup(resolved.instance);
+      if (!ctx.inferredInputModes.has(resolved.pin)) {
+        ctx.inferredInputModes.set(resolved.pin, pullup ? 'INPUT_PULLUP' : 'INPUT');
+      }
+      // Spin while the line still reads its unpressed level (pull-up idles
+      // HIGH, pull-down idles LOW) — a real spin-wait, printed honestly.
+      return [
+        {
+          kind: 'while',
+          condition: {
+            kind: 'binary',
+            op: '==',
+            left: { kind: 'read', op: 'digital', pin: resolved.pin },
+            right: { kind: 'bool', value: pullup },
+          },
+          body: [],
+        },
+      ];
     }
     case 'set_pwm': {
       const pin = digitalPin(numField(block, 'PIN', 9), ctx, block.id);

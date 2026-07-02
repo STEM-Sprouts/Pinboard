@@ -212,6 +212,42 @@ export const defineBlocks = () => {
     },
   };
 
+  Blockly.Blocks['led_brightness'] = {
+    init(this: Blockly.Block) {
+      this.appendValueInput('VALUE')
+        .setCheck('Number')
+        .appendField('set')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField('brightness to');
+      this.setInputsInline(true);
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Set LED brightness 0–255 with PWM (respects the LED wiring)');
+    },
+  };
+
+  Blockly.Blocks['led_blink'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('blink')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField('every')
+        .appendField(new Blockly.FieldNumber(500, 0, undefined, 1), 'MS')
+        .appendField('ms');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn the LED on, wait, turn it off, wait — one full blink');
+    },
+  };
+
   Blockly.Blocks['button_is_pressed'] = {
     init(this: Blockly.Block) {
       this.appendDummyInput()
@@ -226,6 +262,22 @@ export const defineBlocks = () => {
     },
   };
 
+  Blockly.Blocks['button_wait'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('wait until')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('button', '(add a Button first)')),
+          'COMPONENT',
+        )
+        .appendField('is pressed');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Pause here until the button is pressed (the Arduino really spins)');
+    },
+  };
+
   Blockly.Blocks['pot_read'] = {
     init(this: Blockly.Block) {
       this.appendDummyInput()
@@ -237,6 +289,40 @@ export const defineBlocks = () => {
       this.setOutput(true, 'Number');
       this.setColour(COLORS.COMPONENTS);
       this.setTooltip('Reads the knob position, 0–1023');
+    },
+  };
+
+  Blockly.Blocks['pot_map'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('map')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        )
+        .appendField('to')
+        .appendField(new Blockly.FieldNumber(0), 'LOW')
+        .appendField('–')
+        .appendField(new Blockly.FieldNumber(255), 'HIGH');
+      this.setOutput(true, 'Number');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Knob position rescaled to your range (like map(analogRead(pin), 0, 1023, low, high))');
+    },
+  };
+
+  Blockly.Blocks['pot_above'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        )
+        .appendField('above')
+        .appendField(new Blockly.FieldNumber(512, 0, 1023, 1), 'THRESHOLD')
+        .appendField('?');
+      this.setOutput(true, 'Boolean');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('True while the knob reads above the threshold (0–1023)');
     },
   };
 

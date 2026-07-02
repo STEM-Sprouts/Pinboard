@@ -666,3 +666,89 @@ describe('PWM, for-range, constrain/min/max/abs, comment blocks', () => {
     expect(printArduino(program).code).toContain('  // blink twice per second');
   });
 });
+
+describe('component convenience blocks (codegen.md §5 Components)', () => {
+  const inLoop = (block: object): BlocklyWorkspaceJson => ({
+    blocks: { languageVersion: 0, blocks: [{ type: 'arduino_loop', inputs: { DO: { block: block as never } } }] },
+  });
+
+  it('led_brightness writes the value for active-high and the inverse for active-low', () => {
+    const block = {
+      type: 'led_brightness',
+      fields: { COMPONENT: 'led1' },
+      inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: 200 } } } },
+    };
+    const activeHigh = lowerWorkspaceToIR(inLoop(block), [makeLed('led1', 'D9', true)]);
+    expect(activeHigh.diagnostics).toEqual([]);
+    expect(activeHigh.program.loop[0]).toMatchObject({
+      kind: 'analogWrite',
+      pin: 'D9',
+      value: { kind: 'num', value: 200 },
+    });
+
+    const activeLow = lowerWorkspaceToIR(inLoop(block), [makeLed('led1', 'D9', false)]);
+    expect(activeLow.program.loop[0]).toMatchObject({
+      kind: 'analogWrite',
+      pin: 'D9',
+      value: { kind: 'binary', op: '-', left: { kind: 'num', value: 255 }, right: { kind: 'num', value: 200 } },
+    });
+    expect(printArduino(activeLow.program).code).toContain('analogWrite(9, 255 - 200);');
+  });
+
+  it('led_blink lowers to on/delay/off/delay with wiring-aware levels', () => {
+    const block = { type: 'led_blink', fields: { COMPONENT: 'led1', MS: 250 } };
+    const { program, diagnostics } = lowerWorkspaceToIR(inLoop(block), [makeLed('led1', 'D13', true)]);
+    expect(diagnostics).toEqual([]);
+    expect(program.loop).toMatchObject([
+      { kind: 'digitalWrite', pin: 'D13', value: { kind: 'bool', value: true } },
+      { kind: 'delay', ms: { kind: 'num', value: 250 } },
+      { kind: 'digitalWrite', pin: 'D13', value: { kind: 'bool', value: false } },
+      { kind: 'delay', ms: { kind: 'num', value: 250 } },
+    ]);
+
+    const activeLow = lowerWorkspaceToIR(inLoop(block), [makeLed('led1', 'D13', false)]);
+    expect(activeLow.program.loop[0]).toMatchObject({ value: { kind: 'bool', value: false } });
+    expect(activeLow.program.loop[2]).toMatchObject({ value: { kind: 'bool', value: true } });
+  });
+
+  it('button_wait spins on the unpressed level per pull mode and infers pinMode', () => {
+    const block = { type: 'button_wait', fields: { COMPONENT: 'btn1' } };
+    const pullup = lowerWorkspaceToIR(inLoop(block), [makeButton('btn1', 'D2', 'internal_pullup')]);
+    expect(pullup.diagnostics).toEqual([]);
+    expect(pullup.program.loop[0]).toMatchObject({
+      kind: 'while',
+      condition: {
+        kind: 'binary',
+        op: '==',
+        left: { kind: 'read', op: 'digital', pin: 'D2' },
+        right: { kind: 'bool', value: true },
+      },
+      body: [],
+    });
+    expect(printArduino(pullup.program).code).toContain('while (digitalRead(2) == HIGH) { }');
+    expect(printArduino(pullup.program).code).toContain('pinMode(2, INPUT_PULLUP);');
+
+    const pulldown = lowerWorkspaceToIR(inLoop(block), [makeButton('btn1', 'D2', 'external_pulldown')]);
+    expect(pulldown.program.loop[0]).toMatchObject({
+      condition: { right: { kind: 'bool', value: false } },
+    });
+  });
+
+  it('pot_map and pot_above lower through the instance pin', () => {
+    const mapBlock = { type: 'pot_map', fields: { COMPONENT: 'pot1', LOW: 0, HIGH: 255 } };
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({ type: 'set_pwm', fields: { PIN: 9 }, inputs: { VALUE: { block: mapBlock } } }),
+      [makePot('pot1', 'A0')],
+    );
+    expect(diagnostics).toEqual([]);
+    expect(printArduino(program).code).toContain('analogWrite(9, map(analogRead(A0), 0, 1023, 0, 255));');
+
+    const aboveBlock = { type: 'pot_above', fields: { COMPONENT: 'pot1', THRESHOLD: 512 } };
+    const above = lowerWorkspaceToIR(
+      inLoop({ type: 'if_do', inputs: { CONDITION: { block: aboveBlock }, DO: { block: { type: 'set_pin', fields: { PIN: 13, STATE: 'HIGH' } } } } }),
+      [makePot('pot1', 'A0')],
+    );
+    expect(above.diagnostics).toEqual([]);
+    expect(printArduino(above.program).code).toContain('if (analogRead(A0) > 512) {');
+  });
+});
