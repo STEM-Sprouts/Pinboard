@@ -384,3 +384,46 @@ test.describe('virtual hardware', () => {
     await expect(button).toHaveAttribute('data-pressed', 'false');
   });
 });
+
+test.describe('code source map', () => {
+  // Click a block by its label. Stacked blocks nest their SVG groups and
+  // selection reorders the DOM, so resolve the text element whose *nearest*
+  // [data-id] ancestor is the target block and click its real coordinates.
+  async function clickBlockLabel(page: Page, blockId: string, label: string) {
+    // page.evaluate does not auto-wait; make sure the block has rendered.
+    await expect(page.locator(`[data-id="${blockId}"]`).first()).toBeVisible();
+    const point = await page.evaluate(
+      ([id, text]) => {
+        const el = [...document.querySelectorAll('svg text')].find(
+          (t) =>
+            // Blockly renders labels with non-breaking spaces; normalize.
+            t.textContent?.replace(/ /g, ' ').trim() === text &&
+            t.closest('[data-id]')?.getAttribute('data-id') === id,
+        );
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      },
+      [blockId, label],
+    );
+    if (!point) throw new Error(`block ${blockId} with label "${label}" not found`);
+    await page.mouse.click(point.x, point.y);
+  }
+
+  test('selecting a block highlights its printed lines; deselecting clears them', async ({ page }) => {
+    // The starter loop has two "set pin 13" blocks; each must highlight
+    // exactly its own printed line.
+    const highlighted = page.locator('.cm-block-highlight');
+    await clickBlockLabel(page, 'starter_on', 'set pin');
+    await expect(highlighted).toHaveCount(1);
+    await expect(highlighted).toContainText('digitalWrite(13, HIGH);');
+
+    await clickBlockLabel(page, 'starter_off', 'set pin');
+    await expect(highlighted).toHaveCount(1);
+    await expect(highlighted).toContainText('digitalWrite(13, LOW);');
+
+    // Clicking empty workspace deselects; the highlight must clear.
+    await page.locator('.blocklySvg').first().click({ position: { x: 600, y: 380 } });
+    await expect(highlighted).toHaveCount(0);
+  });
+});

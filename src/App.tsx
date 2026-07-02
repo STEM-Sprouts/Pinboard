@@ -58,6 +58,7 @@ function App() {
   const [potValues, setPotValues] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string[]>([]);
   const [saveNote, setSaveNote] = useState('');
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(
     () => loadedProject.lessons?.lessonId ?? null,
@@ -229,6 +230,16 @@ function App() {
     setWorkspaceJson(json);
   }, []);
 
+  const handleBlockSelection = useCallback((blockId: string | null) => {
+    setSelectedBlockId(blockId);
+  }, []);
+
+  // Selected block → its printed lines, via the printer's source map.
+  const highlightRange = useMemo(
+    () => (selectedBlockId ? (printed.sourceMap.blockIdToLineRange[selectedBlockId] ?? null) : null),
+    [selectedBlockId, printed],
+  );
+
   const handleExport = useCallback(() => {
     const doc = currentDocument();
     const blob = new Blob([exportProjectJson(doc)], { type: 'application/json' });
@@ -287,6 +298,7 @@ function App() {
             key={`${loadedProject.metadata.id}:${workspaceNonce}`}
             initialWorkspace={loadedProject.workspace.data as BlocklyWorkspaceJson}
             onWorkspaceChange={handleWorkspaceChange}
+            onSelectionChange={handleBlockSelection}
           />
           {lessonOpen && (
             <div className="absolute left-0 top-0 bottom-0 w-80 z-20 border-r border-gray-200 shadow-lg">
@@ -323,7 +335,7 @@ function App() {
       </div>
 
       <div className="h-56 border-t border-gray-200 bg-surface shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 w-full">
-        <CodePreview code={printed.code} />
+        <CodePreview code={printed.code} highlight={highlightRange} />
       </div>
     </div>
   );

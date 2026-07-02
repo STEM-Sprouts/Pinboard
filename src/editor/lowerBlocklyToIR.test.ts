@@ -505,3 +505,62 @@ describe('variables, logic, math, time blocks', () => {
     expect(diagnostics.some((d) => d.id.startsWith('unknown-variable') && d.severity === 'error')).toBe(true);
   });
 });
+
+describe('source block ids (codegen.md §9 CodeSourceMap)', () => {
+  it('every lowered statement carries the id of the block that produced it', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            id: 'loop-block',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'set_pin',
+                  id: 'write-block',
+                  fields: { PIN: 13, STATE: 'HIGH' },
+                  next: { block: { type: 'delay_ms', id: 'delay-block', fields: { DELAY: 500 } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { program } = lowerWorkspaceToIR(workspace);
+    expect(program.loop.map((stmt) => stmt.sourceBlockId)).toEqual(['write-block', 'delay-block']);
+  });
+
+  it('nested statements carry their own block ids, containers keep theirs', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            id: 'loop-block',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'if_do',
+                  id: 'if-block',
+                  inputs: {
+                    CONDITION: { block: { type: 'read_pin', id: 'read-block', fields: { PIN: 2 } } },
+                    DO: { block: { type: 'set_pin', id: 'inner-block', fields: { PIN: 13, STATE: 'HIGH' } } },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { program } = lowerWorkspaceToIR(workspace);
+    const [ifStmt] = program.loop;
+    expect(ifStmt.sourceBlockId).toBe('if-block');
+    if (ifStmt.kind !== 'if') throw new Error('expected if');
+    expect(ifStmt.then[0].sourceBlockId).toBe('inner-block');
+  });
+});

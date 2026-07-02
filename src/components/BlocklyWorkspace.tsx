@@ -107,9 +107,15 @@ interface BlocklyWorkspaceProps {
   /** Loaded once at mount; keep the reference stable across renders. */
   initialWorkspace: BlocklyWorkspaceJson;
   onWorkspaceChange: (json: BlocklyWorkspaceJson) => void;
+  /** Fires with the selected block id (null on deselect); keep the reference stable. */
+  onSelectionChange?: (blockId: string | null) => void;
 }
 
-export default function BlocklyWorkspace({ initialWorkspace, onWorkspaceChange }: BlocklyWorkspaceProps) {
+export default function BlocklyWorkspace({
+  initialWorkspace,
+  onWorkspaceChange,
+  onSelectionChange,
+}: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
 
@@ -135,6 +141,11 @@ export default function BlocklyWorkspace({ initialWorkspace, onWorkspaceChange }
     };
 
     workspace.addChangeListener((e) => {
+      if (e.type === Blockly.Events.SELECTED) {
+        const selected = e as Blockly.Events.Selected;
+        onSelectionChange?.(selected.newElementId ?? null);
+        return;
+      }
       if (e.isUiEvent || e.type === Blockly.Events.FINISHED_LOADING) return;
       emit();
     });
@@ -151,7 +162,7 @@ export default function BlocklyWorkspace({ initialWorkspace, onWorkspaceChange }
       workspace.dispose();
       workspaceRef.current = null;
     };
-  }, [initialWorkspace, onWorkspaceChange]);
+  }, [initialWorkspace, onWorkspaceChange, onSelectionChange]);
 
   return (
     <div className="flex-1 min-w-0 min-h-0 relative w-full h-full">

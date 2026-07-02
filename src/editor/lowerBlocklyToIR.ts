@@ -337,7 +337,11 @@ function lowerStatement(block: BlocklyBlockJson, ctx: Ctx): StatementIR[] {
 function lowerChain(first: BlocklyBlockJson | undefined, ctx: Ctx): StatementIR[] {
   const statements: StatementIR[] = [];
   for (let block = first; block; block = block.next?.block) {
-    statements.push(...lowerStatement(block, ctx));
+    for (const stmt of lowerStatement(block, ctx)) {
+      // Tag the statements this block directly produced (nested bodies were
+      // tagged by their own blocks) so the printer can build the source map.
+      statements.push(block.id !== undefined ? { ...stmt, sourceBlockId: block.id } : stmt);
+    }
   }
   return statements;
 }

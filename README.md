@@ -155,9 +155,12 @@ Phase 1 — learning-loop MVP (in progress):
   and/or/not, wait-until (negation folded into readable C), arithmetic, inclusive
   random, Arduino `map()`, and `millis()`
 - ✅ **CodeMirror 6 read-only preview**: line numbers + C++ highlighting; strictly
-  one-way blocks→code (typing does nothing, E2E-enforced) — ready for line↔block
-  gutters and inline compiler diagnostics
-- ⏳ Next: line↔block source map, buzzer & servo components, Phase 2 (Supabase cloud save)
+  one-way blocks→code (typing does nothing, E2E-enforced)
+- ✅ **Line↔block source map**: the printer emits a `CodeSourceMap`; selecting a
+  block highlights exactly its printed lines in the preview — the same map will
+  carry compiler error→block diagnostics later (`src/arduino/sourceMap.ts`)
+- ⏳ Next: remaining beginner blocks (PWM write, for-range, constrain), lessons 3–4,
+  buzzer & servo components, Phase 2 (Supabase cloud save)
 
 ---
 

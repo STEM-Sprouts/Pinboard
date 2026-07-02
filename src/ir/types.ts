@@ -51,7 +51,14 @@ export type ExpressionIR =
   | { kind: 'binary'; op: BinaryOp; left: ExpressionIR; right: ExpressionIR }
   | { kind: 'call'; fn: CallFn; args: ExpressionIR[] };
 
-export type StatementIR =
+/**
+ * Statements optionally carry the Blockly block id that produced them so the
+ * printer can emit a line↔block CodeSourceMap (codegen.md §9). Metadata only:
+ * the runtime and printer semantics never read it.
+ */
+export type StatementIR = StatementNodeIR & { sourceBlockId?: string };
+
+type StatementNodeIR =
   | { kind: 'declare'; name: string; valueType: ValueType; initial?: ExpressionIR; scope: 'global' | 'local' }
   | { kind: 'assign'; name: string; value: ExpressionIR }
   | { kind: 'change'; name: string; delta: ExpressionIR }
