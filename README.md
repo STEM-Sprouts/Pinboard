@@ -114,8 +114,9 @@ Blockly workspace → Project document → IR → { simulator | Arduino C printe
 ```
 
 The architecture spec (spine, ordered build plan, and per-domain docs for the
-runtime, codegen, hardware, persistence, and compiler subsystems) is maintained
-as private planning docs and drives the phases below.
+runtime, codegen, hardware, persistence, and compiler subsystems) lives in
+[docs/](docs/) — start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
+ordered tracker [docs/TASKS.md](docs/TASKS.md) — and drives the phases below.
 
 **Status: Phase 0 complete, Phase 1 in progress.**
 
