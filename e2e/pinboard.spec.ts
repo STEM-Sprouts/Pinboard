@@ -446,3 +446,28 @@ test.describe('code source map', () => {
     await expect(highlighted).toHaveCount(0);
   });
 });
+
+test.describe('routes', () => {
+  test('/editor/new opens a fresh starter project; /projects lists local projects', async ({ page }) => {
+    await page.goto('/editor/new');
+    await expect(page).toHaveURL(/\/editor\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('emulator-status')).toHaveText('idle');
+    await expect(page.getByTestId('code-preview')).toContainText('digitalWrite(13, HIGH);');
+    // Let the debounced autosave land before navigating away.
+    await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
+
+    await page.goto('/projects');
+    await expect(page.getByTestId('project-list')).toBeVisible();
+    await expect(page.getByTestId('project-list').getByRole('link').first()).toContainText('My Pinboard Project');
+
+    // Clicking a project opens the editor for that id.
+    await page.getByTestId('project-list').getByRole('link').first().click();
+    await expect(page).toHaveURL(/\/editor\//);
+    await expect(page.getByTestId('code-preview')).toContainText('digitalWrite(13, HIGH);');
+  });
+
+  test('/auth/callback never blocks local use — it returns to the editor', async ({ page }) => {
+    await page.goto('/auth/callback');
+    await expect(page.getByTestId('emulator-status')).toHaveText('idle');
+  });
+});

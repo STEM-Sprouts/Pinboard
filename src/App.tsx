@@ -35,16 +35,18 @@ const MAX_SERIAL_LINES = 500;
 const AUTOSAVE_DEBOUNCE_MS = 750;
 const DEFAULT_POT_VALUE = 512;
 
-function App() {
+function App({ localId }: { localId?: string } = {}) {
   const [store] = useState(() => new LocalProjectStore(window.localStorage));
 
-  // Local-first: restore the last-opened project, else start on Blink with
-  // hardware pre-added — never a blank canvas (persistence.md §3, lessons.md §3).
+  // Local-first: open the routed project (an unknown id starts a fresh
+  // starter under that id), else restore the last-opened project, else start
+  // on Blink with hardware pre-added — never a blank canvas
+  // (persistence.md §3, lessons.md §3).
   const [loadedProject, setLoadedProject] = useState<PinboardProjectDocument>(
     () =>
-      store.loadLastOpened() ??
+      (localId ? store.load(localId) : store.loadLastOpened()) ??
       createLocalProject(
-        crypto.randomUUID(),
+        localId ?? crypto.randomUUID(),
         starterWorkspaceJson,
         new Date().toISOString(),
         'My Pinboard Project',
