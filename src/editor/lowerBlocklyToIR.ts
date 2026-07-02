@@ -49,6 +49,10 @@ type Ctx = {
   variableNames: Map<string, string>;
   /** Variables actually referenced — emitted as globals (codegen.md §6). */
   usedVariables: Set<string>;
+  /** for-range loop variables — declared by the for statement itself, so
+   * they are excluded from the globals (reads inside the body resolve to
+   * the loop-local in the printed C). */
+  loopVariables: Set<string>;
 };
 
 const ARITH_OPS: Record<string, '+' | '-' | '*' | '/' | '%'> = {
@@ -231,6 +235,31 @@ function lowerValue(block: BlocklyBlockJson | undefined, fallback: ExpressionIR,
       // Arduino random(min, max) excludes max; the block is inclusive.
       return { kind: 'call', fn: 'random', args: [{ kind: 'num', value: from }, { kind: 'num', value: to + 1 }] };
     }
+    case 'constrain_range':
+      return {
+        kind: 'call',
+        fn: 'constrain',
+        args: [
+          lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx),
+          { kind: 'num', value: numField(block, 'LOW', 0) },
+          { kind: 'num', value: numField(block, 'HIGH', 255) },
+        ],
+      };
+    case 'math_minmax':
+      return {
+        kind: 'call',
+        fn: strField(block, 'OP', 'MIN') === 'MAX' ? 'max' : 'min',
+        args: [
+          lowerValue(inputBlock(block, 'A'), { kind: 'num', value: 0 }, ctx),
+          lowerValue(inputBlock(block, 'B'), { kind: 'num', value: 0 }, ctx),
+        ],
+      };
+    case 'math_abs':
+      return {
+        kind: 'call',
+        fn: 'abs',
+        args: [lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx)],
+      };
     case 'map_range':
       return {
         kind: 'call',
@@ -271,6 +300,29 @@ function lowerStatement(block: BlocklyBlockJson, ctx: Ctx): StatementIR[] {
       const level = on ? activeHigh : !activeHigh;
       return [{ kind: 'digitalWrite', pin: resolved.pin, value: { kind: 'bool', value: level } }];
     }
+    case 'set_pwm': {
+      const pin = digitalPin(numField(block, 'PIN', 9), ctx, block.id);
+      return [
+        { kind: 'analogWrite', pin, value: lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx) },
+      ];
+    }
+    case 'for_range': {
+      const name = varField(block, 'VAR', ctx);
+      if (name === null) return [];
+      ctx.loopVariables.add(name);
+      return [
+        {
+          kind: 'forRange',
+          varName: name,
+          from: { kind: 'num', value: numField(block, 'FROM', 0) },
+          to: { kind: 'num', value: numField(block, 'TO', 10) },
+          step: { kind: 'num', value: numField(block, 'BY', 1) },
+          body: lowerChain(inputBlock(block, 'DO'), ctx),
+        },
+      ];
+    }
+    case 'comment_note':
+      return [{ kind: 'comment', text: strField(block, 'TEXT', '') }];
     case 'delay_ms':
       return [{ kind: 'delay', ms: { kind: 'num', value: Math.max(0, numField(block, 'DELAY', 0)) } }];
     case 'repeat_times':
@@ -364,6 +416,7 @@ export function lowerWorkspaceToIR(
     inferredInputModes: new Map(),
     variableNames,
     usedVariables: new Set(),
+    loopVariables: new Set(),
   };
   const setup: StatementIR[] = [];
   const loop: StatementIR[] = [];
@@ -396,6 +449,7 @@ export function lowerWorkspaceToIR(
   // Beginner variables are globals with a zero initializer so counters
   // persist across loop() passes (codegen.md §6); sorted for determinism.
   const globals = [...ctx.usedVariables]
+    .filter((name) => !ctx.loopVariables.has(name))
     .sort()
     .map((name) => ({ name, valueType: 'number' as const, initial: { kind: 'num', value: 0 } as const }));
 

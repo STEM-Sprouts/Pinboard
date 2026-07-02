@@ -17,7 +17,8 @@ const TOOLBOX_CONFIG = {
       colour: '#FFAB19',
       contents: [
         { kind: 'block', type: 'arduino_setup' },
-        { kind: 'block', type: 'arduino_loop' }
+        { kind: 'block', type: 'arduino_loop' },
+        { kind: 'block', type: 'comment_note' }
       ]
     },
     {
@@ -36,7 +37,8 @@ const TOOLBOX_CONFIG = {
       colour: '#4C97FF',
       contents: [
         { kind: 'block', type: 'set_pin' },
-        { kind: 'block', type: 'read_pin' }
+        { kind: 'block', type: 'read_pin' },
+        { kind: 'block', type: 'set_pwm' }
       ]
     },
     {
@@ -45,7 +47,8 @@ const TOOLBOX_CONFIG = {
       colour: '#FFBF00',
       contents: [
         { kind: 'block', type: 'delay_ms' },
-        { kind: 'block', type: 'repeat_times' }
+        { kind: 'block', type: 'repeat_times' },
+        { kind: 'block', type: 'for_range' }
       ]
     },
     {
@@ -69,7 +72,10 @@ const TOOLBOX_CONFIG = {
         { kind: 'block', type: 'num_value' },
         { kind: 'block', type: 'math_arith' },
         { kind: 'block', type: 'random_range' },
-        { kind: 'block', type: 'map_range' }
+        { kind: 'block', type: 'map_range' },
+        { kind: 'block', type: 'constrain_range' },
+        { kind: 'block', type: 'math_minmax' },
+        { kind: 'block', type: 'math_abs' }
       ]
     },
     {

@@ -71,6 +71,52 @@ export const defineBlocks = () => {
       "tooltip": "Reads the state of a digital pin",
       "helpUrl": ""
     },
+    // Pins: set PWM pin [n] to [value] (analogWrite; diagnostics warn on non-PWM pins)
+    {
+      "type": "set_pwm",
+      "message0": "set PWM pin %1 to %2",
+      "args0": [
+        { "type": "field_number", "name": "PIN", "value": 9, "min": 0, "max": 13, "precision": 1 },
+        { "type": "input_value", "name": "VALUE", "check": "Number" }
+      ],
+      "inputsInline": true,
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.PINS,
+      "tooltip": "Write a PWM value (0–255) to a pin, like Arduino analogWrite",
+      "helpUrl": ""
+    },
+    // Structure: comment
+    {
+      "type": "comment_note",
+      "message0": "note %1",
+      "args0": [
+        { "type": "field_input", "name": "TEXT", "text": "describe this part" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.STRUCTURE,
+      "tooltip": "A note for humans — becomes a // comment in the code",
+      "helpUrl": ""
+    },
+    // Control: for [var] from [a] to [b] by [step]
+    {
+      "type": "for_range",
+      "message0": "for %1 from %2 to %3 by %4 %5 %6",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "i" },
+        { "type": "field_number", "name": "FROM", "value": 0, "precision": 1 },
+        { "type": "field_number", "name": "TO", "value": 10, "precision": 1 },
+        { "type": "field_number", "name": "BY", "value": 1, "precision": 1 },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "DO" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.CONTROL,
+      "tooltip": "Count from one number to another, running the blocks each step",
+      "helpUrl": ""
+    },
     // Control: delay [ms]
     {
       "type": "delay_ms",
@@ -251,6 +297,48 @@ export const defineBlocks = () => {
       "output": "Number",
       "colour": COLORS.MATH,
       "tooltip": "Rescales a value from one range to another (like Arduino map)",
+      "helpUrl": ""
+    },
+    {
+      "type": "constrain_range",
+      "message0": "constrain %1 between %2 and %3",
+      "args0": [
+        { "type": "input_value", "name": "VALUE", "check": "Number" },
+        { "type": "field_number", "name": "LOW", "value": 0 },
+        { "type": "field_number", "name": "HIGH", "value": 255 }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Keeps a value inside a range (like Arduino constrain)",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_minmax",
+      "message0": "%1 of %2 and %3",
+      "args0": [
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["smaller", "MIN"], ["larger", "MAX"]]
+        },
+        { "type": "input_value", "name": "A", "check": "Number" },
+        { "type": "input_value", "name": "B", "check": "Number" }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Picks the smaller (min) or larger (max) of two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_abs",
+      "message0": "absolute value of %1",
+      "args0": [{ "type": "input_value", "name": "VALUE", "check": "Number" }],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Distance from zero — abs(-7) is 7",
       "helpUrl": ""
     },
     {

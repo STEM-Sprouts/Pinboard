@@ -564,3 +564,105 @@ describe('source block ids (codegen.md §9 CodeSourceMap)', () => {
     expect(ifStmt.then[0].sourceBlockId).toBe('inner-block');
   });
 });
+
+describe('PWM, for-range, constrain/min/max/abs, comment blocks', () => {
+  const inLoop = (block: object): BlocklyWorkspaceJson => ({
+    blocks: { languageVersion: 0, blocks: [{ type: 'arduino_loop', inputs: { DO: { block: block as never } } }] },
+  });
+
+  it('set_pwm lowers to analogWrite with a lowered value expression', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({
+        type: 'set_pwm',
+        fields: { PIN: 9 },
+        inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: 128 } } } },
+      }),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toMatchObject({ kind: 'analogWrite', pin: 'D9', value: { kind: 'num', value: 128 } });
+    const { code } = printArduino(program);
+    expect(code).toContain('analogWrite(9, 128);');
+    expect(code).toContain('pinMode(9, OUTPUT);');
+  });
+
+  it('for_range lowers to forRange and its loop variable is not a global', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      variables: [{ id: 'v-i', name: 'i' }],
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'for_range',
+                  fields: { VAR: { id: 'v-i' }, FROM: 0, TO: 10, BY: 2 },
+                  inputs: { DO: { block: { type: 'set_pin', fields: { PIN: 13, STATE: 'HIGH' } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { program, diagnostics } = lowerWorkspaceToIR(workspace);
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toMatchObject({
+      kind: 'forRange',
+      varName: 'i',
+      from: { kind: 'num', value: 0 },
+      to: { kind: 'num', value: 10 },
+      step: { kind: 'num', value: 2 },
+    });
+    expect(program.globals.map((g) => g.name)).not.toContain('i');
+    expect(printArduino(program).code).toContain('for (long i = 0; i <= 10; i += 2) {');
+  });
+
+  it('constrain, min/max, and abs lower to Arduino call expressions', () => {
+    const constrained = {
+      type: 'constrain_range',
+      fields: { LOW: 0, HIGH: 255 },
+      inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: 300 } } } },
+    };
+    const minOf = {
+      type: 'math_minmax',
+      fields: { OP: 'MIN' },
+      inputs: {
+        A: { block: { type: 'num_value', fields: { NUM: 3 } } },
+        B: { block: { type: 'math_abs', inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: -7 } } } } } },
+      },
+    };
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({ type: 'set_pwm', fields: { PIN: 9 }, inputs: { VALUE: { block: constrained } } }),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toMatchObject({
+      kind: 'analogWrite',
+      value: { kind: 'call', fn: 'constrain', args: [{ kind: 'num', value: 300 }, { kind: 'num', value: 0 }, { kind: 'num', value: 255 }] },
+    });
+
+    const minLowered = lowerWorkspaceToIR(
+      inLoop({ type: 'set_pwm', fields: { PIN: 9 }, inputs: { VALUE: { block: minOf } } }),
+    );
+    expect(minLowered.diagnostics).toEqual([]);
+    expect(minLowered.program.loop[0]).toMatchObject({
+      kind: 'analogWrite',
+      value: {
+        kind: 'call',
+        fn: 'min',
+        args: [{ kind: 'num', value: 3 }, { kind: 'call', fn: 'abs', args: [{ kind: 'num', value: -7 }] }],
+      },
+    });
+    expect(printArduino(minLowered.program).code).toContain('analogWrite(9, min(3, abs(-7)));');
+  });
+
+  it('comment_note lowers to a comment statement and prints as //', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(
+      inLoop({ type: 'comment_note', fields: { TEXT: 'blink twice per second' } }),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toMatchObject({ kind: 'comment', text: 'blink twice per second' });
+    expect(printArduino(program).code).toContain('  // blink twice per second');
+  });
+});

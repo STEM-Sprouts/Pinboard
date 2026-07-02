@@ -397,7 +397,7 @@ test.describe('code source map', () => {
         const el = [...document.querySelectorAll('svg text')].find(
           (t) =>
             // Blockly renders labels with non-breaking spaces; normalize.
-            t.textContent?.replace(/ /g, ' ').trim() === text &&
+            t.textContent?.replace(/\u00A0/g, ' ').trim() === text &&
             t.closest('[data-id]')?.getAttribute('data-id') === id,
         );
         if (!el) return null;
