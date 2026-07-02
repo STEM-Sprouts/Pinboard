@@ -118,7 +118,7 @@ runtime, codegen, hardware, persistence, and compiler subsystems) lives in
 [docs/](docs/) — start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
 ordered tracker [docs/TASKS.md](docs/TASKS.md) — and drives the phases below.
 
-**Status: Phase 0 complete, Phase 1 in progress.**
+**Status: Phase 0 and Phase 1 complete. Next up: Phase 2 (optional Supabase cloud save).**
 
 Phase 0 — headless runtime spike (done):
 - ✅ Canonical IR types (`src/ir/`) and audited Arduino Uno board profile (`src/hardware/`)
@@ -127,7 +127,7 @@ Phase 0 — headless runtime spike (done):
 - ✅ IR → Arduino C printer with beginner `pinMode` inference (`src/arduino/`)
 - ✅ Runtime tests 1–16 + printer golden tests (`npm test`), driven by synthetic clock/frame schedulers
 
-Phase 1 — learning-loop MVP (in progress):
+Phase 1 — learning-loop MVP (complete):
 - ✅ **The editor now runs the honest pipeline**: Blocks → IR → { C preview | IR simulator }. The old
   mock compile (a hard-coded blink hex that ignored your blocks) is gone — Run executes *your* program.
 - ✅ Blocks→IR lowering (`src/editor/`) as a pure, tested function of the Blockly JSON
@@ -159,8 +159,19 @@ Phase 1 — learning-loop MVP (in progress):
 - ✅ **Line↔block source map**: the printer emits a `CodeSourceMap`; selecting a
   block highlights exactly its printed lines in the preview — the same map will
   carry compiler error→block diagnostics later (`src/arduino/sourceMap.ts`)
-- ⏳ Next: remaining beginner blocks (PWM write, for-range, constrain), lessons 3–4,
-  buzzer & servo components, Phase 2 (Supabase cloud save)
+- ✅ **Full beginner/intermediate block library**: PWM write, for-range,
+  constrain/min/max/abs, comments, plus component convenience blocks
+  (LED brightness & blink, button wait-until-pressed, pot map/threshold) —
+  every one lowering through instance config, never hardcoded polarity
+- ✅ **Four lessons** (the full MVP+ ladder): Blink, Change Blink Speed,
+  Button Controls LED, Potentiometer Controls Brightness — checks run the
+  program headless and assert on the real trace ("the program really writes PWM")
+- ✅ **Editor modes**: beginner / intermediate / advanced filter what the toolbox
+  *offers* only; a mode switch can never touch blocks already in the workspace
+  (E2E-enforced), and the mode persists in the project document
+- ✅ Playwright E2E suite (22 flows) runs as its own CI job alongside
+  typecheck/lint/unit and the arduino-cli fixture-compile job
+- ⏳ Next: Phase 2 (Supabase cloud save), then buzzer & servo components (Phase 3)
 
 ---
 
