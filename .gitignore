@@ -32,3 +32,6 @@ playwright-report/
 *.njsproj
 *.sln
 *.sw?
+
+# Generated fixture sketches
+build/

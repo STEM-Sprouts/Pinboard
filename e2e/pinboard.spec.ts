@@ -58,13 +58,12 @@ test.describe('app shell', () => {
   });
 
   test('renders the Blockly toolbox with all categories and opens a flyout', async ({ page }) => {
-    const toolbox = page.locator('.blocklyToolboxDiv');
-    await expect(toolbox).toBeVisible();
+    await expect(page.locator('.blocklyToolbox')).toBeVisible();
     for (const category of ['Structure', 'Pins', 'Control', 'Logic', 'Serial']) {
-      await expect(toolbox.getByText(category, { exact: true })).toBeVisible();
+      await expect(page.getByRole('treeitem', { name: category })).toBeVisible();
     }
-    await toolbox.getByText('Pins', { exact: true }).click();
-    await expect(page.locator('.blocklyFlyout')).toBeVisible();
+    await page.getByRole('treeitem', { name: 'Pins' }).click();
+    await expect(page.locator('.blocklyToolboxFlyout')).toBeVisible();
   });
 });
 
@@ -135,12 +134,99 @@ test.describe('stress', () => {
 
   test('repeated toolbox interaction while the emulator runs stays responsive', async ({ page }) => {
     await startEmulator(page);
-    const toolbox = page.locator('.blocklyToolboxDiv');
     for (const category of ['Structure', 'Pins', 'Control', 'Logic', 'Serial', 'Pins', 'Control']) {
-      await toolbox.getByText(category, { exact: true }).click();
-      await expect(page.locator('.blocklyFlyout')).toBeVisible();
+      await page.getByRole('treeitem', { name: category }).click();
+      await expect(page.locator('.blocklyToolboxFlyout')).toBeVisible();
     }
     // The emulator kept running through all of it.
+    await expect(status(page)).toHaveText('running');
+  });
+});
+
+test.describe('persistence', () => {
+  test('autosaves the project locally and restores it after reload', async ({ page }) => {
+    await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
+    const firstId = await page.evaluate(() => localStorage.getItem('pinboard:last-opened-project-id'));
+    expect(firstId).toBeTruthy();
+
+    await page.reload();
+    await expect(page.locator('.blocklySvg')).toBeVisible();
+    const secondId = await page.evaluate(() => localStorage.getItem('pinboard:last-opened-project-id'));
+    expect(secondId).toBe(firstId);
+    await expect(page.getByTestId('code-preview')).toContainText('digitalWrite(13, HIGH);');
+  });
+
+  test('exports a .pinboard.json download', async ({ page }) => {
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.pinboard\.json$/);
+  });
+
+  test('imports a project: preview, simulator, and serial all reflect it', async ({ page }) => {
+    const importedDoc = {
+      schemaVersion: 1,
+      appVersion: '0.1.0',
+      metadata: {
+        id: 'e2e-import',
+        title: 'Imported Serial Demo',
+        createdAt: '2026-07-02T00:00:00.000Z',
+        updatedAt: '2026-07-02T00:00:00.000Z',
+      },
+      board: { id: 'arduino-uno', fqbn: 'arduino:avr:uno' },
+      workspace: {
+        format: 'blockly-json',
+        data: {
+          blocks: {
+            languageVersion: 0,
+            blocks: [
+              {
+                type: 'arduino_loop',
+                id: 'imp_loop',
+                x: 40,
+                y: 40,
+                inputs: {
+                  DO: {
+                    block: {
+                      type: 'serial_print',
+                      id: 'imp_print',
+                      inputs: {
+                        VALUE: { block: { type: 'string_text', id: 'imp_text', fields: { TEXT: 'hello import' } } },
+                      },
+                      next: { block: { type: 'delay_ms', id: 'imp_delay', fields: { DELAY: 200 } } },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      hardware: { components: [], wiring: [] },
+      settings: { editorMode: 'beginner', simulationSpeed: 1, showAdvancedBlocks: false },
+    };
+
+    await page.getByTestId('import-input').setInputFiles({
+      name: 'demo.pinboard.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(importedDoc)),
+    });
+    await expect(page.getByTestId('save-note')).toHaveText('Project imported');
+    await expect(page.getByTestId('code-preview')).toContainText('Serial.println("hello import");');
+
+    await startEmulator(page);
+    await expect(page.getByTestId('serial-output')).toContainText('hello import');
+  });
+
+  test('a malformed import fails safely and the editor stays usable', async ({ page }) => {
+    await page.getByTestId('import-input').setInputFiles({
+      name: 'bad.pinboard.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{this is not json'),
+    });
+    await expect(page.getByTestId('save-note')).toContainText('Import failed');
+    await expect(page.getByTestId('code-preview')).toContainText('void loop()');
+    await startEmulator(page);
     await expect(status(page)).toHaveText('running');
   });
 });
@@ -149,11 +235,12 @@ test.describe('virtual hardware', () => {
   test('the virtual button reflects press and release', async ({ page }) => {
     const button = page.getByTestId('virtual-button-2');
     await expect(button).toHaveAttribute('data-pressed', 'false');
-    const box = (await button.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
+    // dispatchEvent targets the React handlers directly: the pressed state
+    // re-renders the element (scale/translate), which real cursor events
+    // race against via onMouseLeave.
+    await button.dispatchEvent('mousedown');
     await expect(button).toHaveAttribute('data-pressed', 'true');
-    await page.mouse.up();
+    await button.dispatchEvent('mouseup');
     await expect(button).toHaveAttribute('data-pressed', 'false');
   });
 });

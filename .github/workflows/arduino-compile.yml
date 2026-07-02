@@ -1,0 +1,37 @@
+# CI compile tests (implemenation_plam/compiler.md §5): prove the generated
+# C is real Arduino by compiling every canonical fixture with arduino-cli.
+name: arduino-compile
+on: [push, pull_request]
+
+jobs:
+  compile-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Cache Arduino core
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino-${{ runner.os }}-avr-v1
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+      - name: Install AVR core and libraries
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install Servo
+      - run: npm ci
+      - name: Generate sketches from IR fixtures
+        run: npm run generate:arduino-fixtures
+      - name: Compile sketches
+        run: |
+          set -e
+          for dir in build/arduino-fixtures/*/; do
+            echo "::group::Compiling ${dir}"
+            arduino-cli compile --fqbn arduino:avr:uno "${dir}"
+            echo "::endgroup::"
+          done

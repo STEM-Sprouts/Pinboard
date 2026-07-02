@@ -117,17 +117,28 @@ The architecture spec (spine, ordered build plan, and per-domain docs for the
 runtime, codegen, hardware, persistence, and compiler subsystems) is maintained
 as private planning docs and drives the phases below.
 
-**Status: Phase 0 complete.** The headless runtime spike is built and tested:
+**Status: Phase 0 complete, Phase 1 in progress.**
 
+Phase 0 — headless runtime spike (done):
 - ✅ Canonical IR types (`src/ir/`) and audited Arduino Uno board profile (`src/hardware/`)
 - ✅ Generator-based IR interpreter with cooperative yielding — a tight `while(true)` cannot freeze the tab (`src/runtime/`)
 - ✅ Unified virtual clock: `millis()` and `delay()` share one injected clock; deterministic and headless in Node (ADR-0005)
 - ✅ IR → Arduino C printer with beginner `pinMode` inference (`src/arduino/`)
 - ✅ Runtime tests 1–16 + printer golden tests (`npm test`), driven by synthetic clock/frame schedulers
-- ⏳ Phase 1 next: dynamic component panel, board-aware pin picker, diagnostics, CodeMirror read-only preview, LocalStorage persistence, lessons
 
-The current UI still runs the v1 prototype path (Blockly → C string + avr8js mock);
-it is replaced as Phase 1 wires the new runtime into the editor.
+Phase 1 — learning-loop MVP (in progress):
+- ✅ **The editor now runs the honest pipeline**: Blocks → IR → { C preview | IR simulator }. The old
+  mock compile (a hard-coded blink hex that ignored your blocks) is gone — Run executes *your* program.
+- ✅ Blocks→IR lowering (`src/editor/`) as a pure, tested function of the Blockly JSON
+- ✅ Default starter project (Blink) — students never open onto a blank canvas
+- ✅ Local-first persistence: debounced LocalStorage autosave, reload restore,
+  `.pinboard.json` export/import with Zod boundary validation (`src/persistence/`)
+- ✅ Board diagnostics in the hardware panel: non-PWM `analogWrite`, D0/D1 serial pins,
+  timer conflicts, analog-read errors, no-loop / no-output hints (`src/hardware/diagnostics.ts`)
+- ✅ CI: typecheck + lint + unit tests, and an arduino-cli job that compiles every canonical
+  fixture generated from IR (`.github/workflows/`)
+- ⏳ Next: dynamic component panel (LED/Button/Potentiometer instances), board-aware pin
+  picker, full beginner block library, CodeMirror preview with line↔block mapping, lessons
 
 ---
 

@@ -9,6 +9,7 @@
  */
 import type { Diagnostic, PinId } from '../hardware/types';
 import type { ProgramIR, StatementIR } from '../ir/types';
+import { walkStatements } from '../ir/walk';
 
 export type InferredPinMode = {
   pin: PinId;
@@ -32,25 +33,6 @@ const PIN_ORDER: PinId[] = [
   'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13',
   'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'GND', '5V',
 ];
-
-function walkStatements(statements: StatementIR[], visit: (stmt: StatementIR) => void): void {
-  for (const stmt of statements) {
-    visit(stmt);
-    switch (stmt.kind) {
-      case 'if':
-        walkStatements(stmt.then, visit);
-        if (stmt.else) walkStatements(stmt.else, visit);
-        break;
-      case 'repeat':
-      case 'while':
-      case 'forRange':
-        walkStatements(stmt.body, visit);
-        break;
-      default:
-        break;
-    }
-  }
-}
 
 export function analyzeProgram(program: ProgramIR): ProgramAnalysis {
   const declaredOrder: PinId[] = [];
