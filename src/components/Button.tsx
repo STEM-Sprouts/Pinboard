@@ -1,7 +1,9 @@
 export default function Button({ pin, isPressed, onPressChange }: { pin: number, isPressed: boolean, onPressChange: (pressed: boolean) => void }) {
   return (
     <div className="flex flex-col items-center gap-2 p-3 border border-gray-100 rounded-lg bg-gray-50 shadow-sm w-20">
-      <button 
+      <button
+        data-testid={`virtual-button-${pin}`}
+        data-pressed={isPressed ? 'true' : 'false'}
         onMouseDown={() => onPressChange(true)}
         onMouseUp={() => onPressChange(false)}
         onMouseLeave={() => onPressChange(false)}

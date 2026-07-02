@@ -8,12 +8,19 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+node_modules.nosync
+node_modules-1aau913Y
 dist
 dist-ssr
 *.local
 
 # Private planning docs
 implemenation_plam/
+
+
+# Playwright
+test-results/
+playwright-report/
 
 # Editor directories and files
 .vscode/*

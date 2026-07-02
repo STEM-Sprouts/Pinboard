@@ -5,7 +5,7 @@ import * as En from 'blockly/msg/en';
 import { defineBlocks } from '../blocks/definitions';
 import { arduinoGenerator, defineGenerators } from '../blocks/generators';
 
-Blockly.setLocale(En as any);
+Blockly.setLocale(En as unknown as Parameters<typeof Blockly.setLocale>[0]);
 defineBlocks();
 defineGenerators();
 

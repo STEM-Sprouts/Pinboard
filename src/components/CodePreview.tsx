@@ -22,7 +22,7 @@ export default function CodePreview({ code }: { code: string }) {
       </div>
       <div className="p-4 flex-1 overflow-y-auto bg-surface text-sm">
         <pre className="m-0">
-          <code ref={codeRef} className="language-cpp bg-transparent !p-0">
+          <code ref={codeRef} data-testid="code-preview" className="language-cpp bg-transparent !p-0">
             {code || '// Generated C code will appear here'}
           </code>
         </pre>

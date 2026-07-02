@@ -34,6 +34,9 @@ const BLINK_HEX = `
 `.trim();
 
 export async function compileMock(code: string): Promise<string> {
+  // The mock ignores the source; a real backend would compile it (see
+  // implemenation_plam/compiler.md for the planned boundary).
+  void code;
   // Simulate compilation delay
   await new Promise(resolve => setTimeout(resolve, 600));
   return BLINK_HEX;

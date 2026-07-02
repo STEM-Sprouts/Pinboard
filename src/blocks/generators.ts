@@ -6,7 +6,9 @@ import * as Blockly from 'blockly/core';
 
 export class ArduinoGenerator extends Blockly.Generator {
   setupCode_: Record<string, string> = {};
-  
+  ORDER_ATOMIC = 0;
+  ORDER_NONE = 99;
+
   constructor() {
     super('Arduino');
     
@@ -14,20 +16,20 @@ export class ArduinoGenerator extends Blockly.Generator {
     this.INDENT = '  ';
   }
   
-  init(workspace: Blockly.Workspace) {
+  init(_workspace: Blockly.Workspace) {
     this.setupCode_ = {};
   }
-  
+
   finish(code: string) {
     // Collect all setup code
     const setupKeys = Object.keys(this.setupCode_);
-    let setupList = setupKeys.map(key => this.setupCode_[key]);
-    
-    let setupString = 'void setup() {\n' +
+    const setupList = setupKeys.map(key => this.setupCode_[key]);
+
+    const setupString = 'void setup() {\n' +
       setupList.map(line => this.INDENT + line).join('\n') +
       '\n}\n\n';
-      
-    let loopString = 'void loop() {\n' +
+
+    const loopString = 'void loop() {\n' +
       code +
       '\n}\n';
       

@@ -5,7 +5,11 @@ export default function LED({ pin, state, color = 'red' }: { pin: number, state:
     : 'bg-gray-200 shadow-inner';
     
   return (
-    <div className="flex flex-col items-center gap-2 p-3 border border-gray-100 rounded-lg bg-gray-50 shadow-sm w-20">
+    <div
+      data-testid={`led-${pin}`}
+      data-state={isActive ? 'on' : 'off'}
+      className="flex flex-col items-center gap-2 p-3 border border-gray-100 rounded-lg bg-gray-50 shadow-sm w-20"
+    >
       <div className={`w-8 h-8 rounded-full transition-all duration-100 ${bgClass}`} />
       <span className="text-xs font-mono font-bold text-gray-500">PIN {pin}</span>
     </div>

@@ -64,7 +64,7 @@ Add specialized sensor/actuator blocks without writing import boilerplate:
 Switch between platforms with a single click — the same blocks generate the correct language automatically.
 
 ### 🧪 In-Browser Emulator
-Test your code **before touching hardware**. The emulator simulates sensor values and pin states directly in the browser. An improved emulator with richer hardware simulation is in active development.
+Test your code **before touching hardware**. The emulator simulates sensor values and pin states directly in the browser. An improved emulator with richer hardware simulation is in active development — see **Pinboard 2.0** below.
 
 ### 🎓 Live Session Mode
 Built for classrooms. Instructors generate a **join code** to start a live session. Students connect instantly — no accounts required. Sessions include:
@@ -104,24 +104,56 @@ npm run dev
 
 ---
 
+## 🏗️ Pinboard 2.0 — IR-based architecture (in progress)
+
+Pinboard is being rebuilt around a single **intermediate representation (IR)** so the
+code preview can never lie about what the simulator does:
+
+```
+Blockly workspace → Project document → IR → { simulator | Arduino C printer | compile check }
+```
+
+The architecture spec (spine, ordered build plan, and per-domain docs for the
+runtime, codegen, hardware, persistence, and compiler subsystems) is maintained
+as private planning docs and drives the phases below.
+
+**Status: Phase 0 complete.** The headless runtime spike is built and tested:
+
+- ✅ Canonical IR types (`src/ir/`) and audited Arduino Uno board profile (`src/hardware/`)
+- ✅ Generator-based IR interpreter with cooperative yielding — a tight `while(true)` cannot freeze the tab (`src/runtime/`)
+- ✅ Unified virtual clock: `millis()` and `delay()` share one injected clock; deterministic and headless in Node (ADR-0005)
+- ✅ IR → Arduino C printer with beginner `pinMode` inference (`src/arduino/`)
+- ✅ Runtime tests 1–16 + printer golden tests (`npm test`), driven by synthetic clock/frame schedulers
+- ⏳ Phase 1 next: dynamic component panel, board-aware pin picker, diagnostics, CodeMirror read-only preview, LocalStorage persistence, lessons
+
+The current UI still runs the v1 prototype path (Blockly → C string + avr8js mock);
+it is replaced as Phase 1 wires the new runtime into the editor.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
 pinboard/
 ├── src/
-│   ├── blocks/          # Custom Blockly block definitions
-│   │   ├── structure/   # Setup, loop, boot blocks
-│   │   ├── pins/        # Digital/analog I/O blocks
-│   │   ├── modules/     # Sensor & actuator library blocks
-│   │   └── serial/      # Serial communication blocks
-│   ├── generators/      # Blockly → C / MicroPython code generators
-│   ├── emulator/        # In-browser hardware emulator
-│   ├── session/         # Live session & join code logic
-│   ├── hardware/        # WebSerial flash & serial monitor
-│   └── ui/              # React components & layout
-├── public/
-├── docs/
-└── tests/
+│   ├── blocks/          # v1 Blockly block definitions & C generator
+│   ├── components/      # React UI (workspace, simulation panel, code preview)
+│   ├── emulator/        # v1 avr8js-based emulator (being replaced)
+│   ├── ir/              # Pinboard 2.0: canonical IR types
+│   ├── hardware/        # Pinboard 2.0: board profiles, pin & diagnostic types
+│   ├── runtime/         # Pinboard 2.0: IR interpreter, scheduler, virtual clock
+│   ├── arduino/         # Pinboard 2.0: IR → Arduino C printer + pinMode inference
+│   └── testing/         # Synthetic clock/frame harness, IR builders, fixtures
+├── e2e/                 # Playwright end-to-end tests
+├── implemenation_plam/  # Architecture spec, domain docs, ordered build plan
+└── public/
+```
+
+### Running the tests
+
+```bash
+npm test                 # Vitest: runtime tests 1–16 + printer golden tests (headless)
+npx playwright test      # E2E: drives the real app in Chromium
 ```
 
 ---

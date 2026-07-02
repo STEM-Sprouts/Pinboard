@@ -20,7 +20,7 @@ export default function Header({ status, onRun, onStop, onReset }: HeaderProps) 
       <div className="flex items-center gap-3">
         <div className="flex items-center text-sm font-medium mr-4 bg-gray-100 px-3 py-1 rounded-full">
           <span className={`w-2.5 h-2.5 rounded-full mr-2 ${status === 'running' ? 'bg-accent animate-pulse' : status === 'error' ? 'bg-red-500' : 'bg-gray-400'}`}></span>
-          <span className="capitalize text-gray-700">{status}</span>
+          <span data-testid="emulator-status" className="capitalize text-gray-700">{status}</span>
         </div>
         
         <button 
