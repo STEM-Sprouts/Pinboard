@@ -471,3 +471,10 @@ test.describe('routes', () => {
     await expect(page.getByTestId('emulator-status')).toHaveText('idle');
   });
 });
+
+test.describe('cloud is optional (ADR-0006/0007)', () => {
+  test('without Supabase env keys, no sign-in UI exists and the editor is fully local', async ({ page }) => {
+    await expect(page.getByTestId('sign-in')).toHaveCount(0);
+    await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
+  });
+});

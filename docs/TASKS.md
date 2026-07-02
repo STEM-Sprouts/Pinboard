@@ -41,10 +41,10 @@ Phase-1 exit: a beginner completes Blink and Button with no account · reload do
 
 ## Phase 2 — Cloud save (optional path)
 
-- [ ] **supabase.md** — Supabase project, `profiles`/`projects` tables, RLS policies. *Exit:* RLS tests pass (user A cannot read user B's project).
-- [ ] **supabase.md** — Google OAuth + magic-link fallback + `/auth/callback` route. *Exit:* sign-in works; **OAuth failure does not block local use.**
-- [ ] **persistence.md + supabase.md** — Cloud save, local→cloud promotion, cloud→local fallback, conflict UI, project hash excluding volatile fields. *Exit:* signed-in save/load works; failed cloud write never overwrites local; hash dedup skips no-op writes.
-- [ ] **supabase.md** — Project list + basic account settings. *Exit:* projects appear after reload.
+- [~] **supabase.md** — Supabase project, `profiles`/`projects` tables, RLS policies. *Exit:* RLS tests pass (user A cannot read user B's project). → schema + RLS + hashed-token `get_shared_project` RPC authored in `supabase/migrations/0001_init.sql` (2026-07-02); **blocked on creating the Supabase project (user step)**, then apply migrations + live RLS tests
+- [~] **supabase.md** — Google OAuth + magic-link fallback + `/auth/callback` route. *Exit:* sign-in works; **OAuth failure does not block local use.** → auth wrappers (`src/supabase/auth.ts`), config-gated sign-in UI (hidden without env keys — E2E-asserted), `/auth/callback` session handling (2026-07-02); pending: real OAuth config + live sign-in test
+- [~] **persistence.md + supabase.md** — Cloud save, local→cloud promotion, cloud→local fallback, conflict UI, project hash excluding volatile fields. *Exit:* signed-in save/load works; failed cloud write never overwrites local; hash dedup skips no-op writes. → normalized hash (`projectHash.ts`, volatile fields excluded, key-order-insensitive) + repository with hash dedup, non-throwing failures, Zod row validation, fake-port unit tests (2026-07-02); pending once creds exist: promotion ask, conflict UI, autosave wiring
+- [~] **supabase.md** — Project list + basic account settings. *Exit:* projects appear after reload. → `/projects` lists local projects with open-by-id (2026-07-02); cloud rows + account settings pending creds
 
 Phase-2 exit: signed-in user can save/load cloud projects · OAuth failure does not block local use · RLS tests pass.
 

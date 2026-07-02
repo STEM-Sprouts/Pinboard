@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Play, Square, RotateCcw, Download, Upload, BookOpen } from 'lucide-react';
 import type { EditorMode } from '../persistence/projectDocument';
+import AccountControl from './AccountControl';
 
 interface HeaderProps {
   status: 'idle' | 'compiling' | 'running' | 'error';
@@ -58,6 +59,7 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-3">
+        <AccountControl />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"

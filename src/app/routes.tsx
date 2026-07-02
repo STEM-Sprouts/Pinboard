@@ -9,6 +9,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { LocalProjectStore } from '../persistence/localProjectStore';
 import type { PinboardProjectDocument } from '../persistence/projectDocument';
+import { getSupabase } from '../supabase/client';
 
 /** /editor/new → a fresh local project id; the editor creates the starter. */
 export function NewProjectRedirect() {
@@ -56,12 +57,19 @@ export function ProjectsPage() {
   );
 }
 
-/** Supabase OAuth redirect target. Until auth lands (Phase 2), finish by
- * returning to the editor — sign-in is never required to keep working. */
+/** Supabase OAuth redirect target. supabase-js consumes the tokens from the
+ * URL on client creation; we wait for the session, then return to the
+ * editor. Unconfigured or failed sign-in returns to the editor too — auth
+ * is never required to keep working (ADR-0007). */
 export function AuthCallbackPage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate('/', { replace: true });
+    const client = getSupabase();
+    if (!client) {
+      navigate('/', { replace: true });
+      return;
+    }
+    void client.auth.getSession().finally(() => navigate('/', { replace: true }));
   }, [navigate]);
   return <p className="p-8 text-sm text-gray-500">Finishing sign-in…</p>;
 }
