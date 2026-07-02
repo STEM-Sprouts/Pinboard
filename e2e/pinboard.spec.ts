@@ -53,10 +53,15 @@ test.describe('app shell', () => {
     await expect(page.getByText('Button 1', { exact: true })).toBeVisible();
   });
 
-  test('code preview shows the generated C skeleton', async ({ page }) => {
+  test('code preview shows the generated C and is truly read-only', async ({ page }) => {
     const preview = page.getByTestId('code-preview');
     await expect(preview).toContainText('void setup()');
     await expect(preview).toContainText('void loop()');
+    // One-way blocks → code (ADR-0004): typing must change nothing.
+    await preview.click();
+    await page.keyboard.type('HACKED');
+    await expect(preview).not.toContainText('HACKED');
+    await expect(preview).toContainText('void setup()');
   });
 
   test('renders the Blockly toolbox with all categories and opens a flyout', async ({ page }) => {

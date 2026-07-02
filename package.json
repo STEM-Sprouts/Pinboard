@@ -14,10 +14,13 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@codemirror/lang-cpp": "^6.0.3",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.4",
     "@tailwindcss/vite": "^4.2.2",
     "avr8js": "^0.21.0",
     "blockly": "^12.5.1",
-    "highlight.js": "^11.11.1",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -26,7 +29,6 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.61.1",
-    "@types/highlight.js": "^9.12.4",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

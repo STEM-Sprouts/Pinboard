@@ -153,7 +153,10 @@ Phase 1 — learning-loop MVP (in progress):
   to zero-initialized globals so counters survive `loop()`), if/else, comparisons,
   and/or/not, wait-until (negation folded into readable C), arithmetic, inclusive
   random, Arduino `map()`, and `millis()`
-- ⏳ Next: CodeMirror preview with line↔block mapping, buzzer & servo components
+- ✅ **CodeMirror 6 read-only preview**: line numbers + C++ highlighting; strictly
+  one-way blocks→code (typing does nothing, E2E-enforced) — ready for line↔block
+  gutters and inline compiler diagnostics
+- ⏳ Next: line↔block source map, buzzer & servo components, Phase 2 (Supabase cloud save)
 
 ---
 
