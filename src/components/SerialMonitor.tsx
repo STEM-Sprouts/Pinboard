@@ -5,7 +5,7 @@ export default function SerialMonitor({ output }: { output: string[] }) {
         Serial Monitor
       </div>
       <div data-testid="serial-output" className="p-4 flex-1 overflow-y-auto bg-gray-900 text-green-400 font-mono text-sm whitespace-pre-wrap">
-        {output.length === 0 ? <span className="text-gray-500 italic">No output...</span> : output.join('\n')}
+        {output.length === 0 ? <span className="text-gray-400 italic">No output...</span> : output.join('\n')}
       </div>
     </div>
   );

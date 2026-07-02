@@ -46,6 +46,7 @@ export default function Header({
         </button>
         <select
           data-testid="editor-mode"
+          aria-label="Editor mode"
           value={editorMode}
           onChange={(e) => onEditorModeChange(e.target.value as EditorMode)}
           className="ml-2 px-2 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border-none"
@@ -93,7 +94,7 @@ export default function Header({
         <button
           onClick={onRun}
           disabled={status === 'running' || status === 'compiling'}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-white rounded-md hover:bg-[#008f6b] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold shadow-sm"
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-white rounded-md hover:bg-[#00654c] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold shadow-sm"
         >
           <Play size={16} className={status === 'running' ? 'opacity-50' : ''} /> Run
         </button>

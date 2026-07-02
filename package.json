@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "generate:arduino-fixtures": "tsx scripts/generateArduinoFixtures.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check:bundle": "tsx scripts/checkBundleBudget.ts"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -29,6 +30,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.61.1",
     "@types/node": "^24.12.0",

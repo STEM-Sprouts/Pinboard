@@ -79,5 +79,5 @@ Phase-5 exit: share links are revocable and expiring · view-only does not leak 
 
 ## Cross-cutting (keep green throughout)
 
-- [ ] **testing.md** — Fitness functions in CI: bundle budget, editor load-time budget, tight-loop responsiveness, arduino-cli compile, malformed-import tests, RLS tests, basic axe a11y.
+- [~] **testing.md** — Fitness functions in CI: bundle budget, editor load-time budget, tight-loop responsiveness, arduino-cli compile, malformed-import tests, RLS tests, basic axe a11y. → done 2026-07-02: bundle budget (600 KB gzip JS gate, baseline ~419 KB; getting lower means lazy-loading Blockly/CodeMirror), axe a11y E2E (serious/critical = 0, our UI fixed: labels, focusable scroller, contrast; Blockly internals excluded), arduino-cli compile, malformed-import, tight-loop (runtime tests + E2E stress). Pending: editor load-time budget on a throttled profile, RLS tests (needs Supabase)
 - [ ] **testing.md** — Differential test stretch goal: interpreter trace vs compiled-HEX-in-avr8js trace for selected fixtures.

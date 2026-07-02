@@ -33,7 +33,7 @@ export function ProjectsPage() {
       </p>
       <Link
         to="/editor/new"
-        className="inline-block mb-6 px-4 py-2 bg-accent text-white rounded-md font-semibold hover:bg-[#008f6b]"
+        className="inline-block mb-6 px-4 py-2 bg-accent text-white rounded-md font-semibold hover:bg-[#00654c]"
       >
         Start building
       </Link>

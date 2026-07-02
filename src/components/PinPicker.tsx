@@ -29,6 +29,7 @@ export default function PinPicker({ board, allowed, value, usedBy, testId, onCha
   return (
     <select
       data-testid={testId}
+      aria-label="Board pin"
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value === '' ? null : (e.target.value as PinId))}
       className="w-full text-xs border border-gray-200 rounded-md px-1.5 py-1 bg-white text-gray-700"

@@ -506,3 +506,18 @@ test.describe('diagnostic quick fixes (hardware.md §6)', () => {
     await expect(fix).toHaveCount(0);
   });
 });
+
+test.describe('accessibility (testing.md §5 fitness function)', () => {
+  test('no serious/critical axe violations in the app UI', async ({ page }) => {
+    const { default: AxeBuilder } = await import('@axe-core/playwright');
+    const results = await new AxeBuilder({ page })
+      // Blockly's SVG internals are third-party; our UI must stay clean.
+      .exclude('.blocklyDiv')
+      .exclude('.blocklySvg')
+      .analyze();
+    const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(
+      serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+    ).toEqual([]);
+  });
+});

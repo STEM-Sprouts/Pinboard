@@ -52,6 +52,7 @@ export default function CodePreview({ code, highlight }: { code: string; highlig
           lineNumbers(),
           syntaxHighlighting(defaultHighlightStyle),
           cpp(),
+          EditorView.contentAttributes.of({ 'aria-label': 'Arduino C preview (read-only)' }),
           blockHighlightField,
           blockHighlightTheme,
           EditorState.readOnly.of(true),
@@ -85,9 +86,9 @@ export default function CodePreview({ code, highlight }: { code: string; highlig
     <div className="h-full flex flex-col">
       <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 flex justify-between items-center text-sm font-semibold text-gray-700">
         <span>Arduino C Preview</span>
-        <span className="text-xs font-normal text-gray-400">read-only — generated from your blocks</span>
+        <span className="text-xs font-normal text-gray-600">read-only — generated from your blocks</span>
       </div>
-      <div ref={hostRef} data-testid="code-preview" className="flex-1 overflow-auto bg-surface text-sm" />
+      <div ref={hostRef} data-testid="code-preview" tabIndex={0} className="flex-1 overflow-auto bg-surface text-sm" />
     </div>
   );
 }

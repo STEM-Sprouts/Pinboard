@@ -98,7 +98,7 @@ export default function LessonPanel({
                 data-testid="check-work"
                 onClick={onCheckWork}
                 disabled={checking}
-                className="w-full px-3 py-2 bg-accent text-white rounded-md font-semibold text-sm hover:bg-[#008f6b] disabled:opacity-50"
+                className="w-full px-3 py-2 bg-accent text-white rounded-md font-semibold text-sm hover:bg-[#00654c] disabled:opacity-50"
               >
                 {checking ? 'Checking…' : 'Check my work'}
               </button>
