@@ -61,6 +61,29 @@ export async function evaluateCheck(check: LessonCheck, ctx: CheckContext): Prom
       const run = await runHeadless(ctx.program, { maxFrames: TRACE_FRAMES });
       return run.pinEvents.some((event) => event.pin === check.pin && event.kind === 'pwm');
     }
+
+    case 'lacksInstruction': {
+      let found = false;
+      walkStatements([...ctx.program.setup, ...ctx.program.loop], (stmt) => {
+        if (stmt.kind === check.statementKind) found = true;
+      });
+      return !found;
+    }
+
+    case 'runtimeServoMoves': {
+      const run = await runHeadless(ctx.program, { maxFrames: TRACE_FRAMES });
+      const angles = new Set(
+        run.pinEvents.filter((event) => event.pin === check.pin && event.kind === 'servo').map((e) => e.value),
+      );
+      return angles.size >= 2;
+    }
+
+    case 'runtimeTonePlays': {
+      const run = await runHeadless(ctx.program, { maxFrames: TRACE_FRAMES });
+      return run.pinEvents.some(
+        (event) => event.pin === check.pin && event.kind === 'tone' && event.value !== null,
+      );
+    }
   }
 }
 

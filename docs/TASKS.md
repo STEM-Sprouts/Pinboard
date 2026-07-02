@@ -56,7 +56,7 @@ Phase-2 exit: signed-in user can save/load cloud projects · OAuth failure does 
 - [x] **codegen.md** — More math blocks, `forRange`, `millis()` lesson support, library hoisting for `Servo.h`, timer-conflict warnings. *Exit:* servo/buzzer sketches compile in CI; timer-conflict warnings appear on D9/D10 (servo) and D3/D11 (tone). → buzzer_play/stop + servo_set_angle blocks lower through instances with one servoAttach inferred into setup(); printer hoists Servo.h/decl; timerNotes warnings pinned by unit tests; buzzer-alarm + servo-sweep sketches in the CI compile set (2026-07-02)
 - [x] **hardware.md** — Better diagnostics + quick fixes. *Exit:* pin-mismatch quick fixes work for LED/Button. → `Diagnostic.fix` + `setComponentPin` action; write-without-component offers "Move LED 1 to D13" only when unambiguous, applied only on click (never silently) — unit + E2E tested (2026-07-02)
 
-Phase-3 exit: servo and buzzer sketches compile in CI · timer conflict warnings appear · generated code stays beginner-readable.
+Phase-3 exit: servo and buzzer sketches compile in CI · timer conflict warnings appear · generated code stays beginner-readable. → **Phase 3 complete 2026-07-02**: buzzer/servo components + blocks + quick fixes, lessons 5–7 (Blink Without Delay, Servo Sweep, Buzzer Alarm) with trace-based checks (`lacksInstruction`, `runtimeServoMoves`, `runtimeTonePlays`).
 
 ---
 

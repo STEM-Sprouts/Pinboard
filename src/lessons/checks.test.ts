@@ -135,3 +135,88 @@ describe('runtimePinWritesPwm', () => {
     expect(await evaluateCheck({ kind: 'runtimePinWritesPwm', pin: 'D3' }, ctx)).toBe(false);
   });
 });
+
+describe('Phase-3 check kinds', () => {
+  const servoWorkspace: BlocklyWorkspaceJson = {
+    variables: [{ id: 'v-a', name: 'angle' }],
+    blocks: {
+      languageVersion: 0,
+      blocks: [
+        {
+          type: 'arduino_loop',
+          inputs: {
+            DO: {
+              block: {
+                type: 'for_range',
+                fields: { VAR: { id: 'v-a' }, FROM: 0, TO: 180, BY: 45 },
+                inputs: {
+                  DO: {
+                    block: {
+                      type: 'servo_set_angle',
+                      fields: { COMPONENT: 'sv1' },
+                      inputs: { ANGLE: { block: { type: 'var_get', fields: { VAR: { id: 'v-a' } } } } },
+                      next: { block: { type: 'delay_ms', fields: { DELAY: 100 } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    },
+  };
+  const servo = {
+    id: 'sv1',
+    type: 'servo' as const,
+    displayName: 'Servo 1',
+    position: { x: 0, y: 0 },
+    config: {},
+    pins: { signal: 'D9' as const },
+  };
+
+  it('lacksInstruction passes only when the statement kind is absent', async () => {
+    const ctx = contextFor(servoWorkspace, [servo]);
+    expect(await evaluateCheck({ kind: 'lacksInstruction', statementKind: 'digitalWrite' }, ctx)).toBe(true);
+    expect(await evaluateCheck({ kind: 'lacksInstruction', statementKind: 'delay' }, ctx)).toBe(false);
+  });
+
+  it('runtimeServoMoves proves the arm really sweeps through angles', async () => {
+    const ctx = contextFor(servoWorkspace, [servo]);
+    expect(await evaluateCheck({ kind: 'runtimeServoMoves', pin: 'D9' }, ctx)).toBe(true);
+    expect(await evaluateCheck({ kind: 'runtimeServoMoves', pin: 'D6' }, ctx)).toBe(false);
+  });
+
+  it('runtimeTonePlays proves a tone really sounds', async () => {
+    const buzzer = {
+      id: 'bz1',
+      type: 'buzzer' as const,
+      displayName: 'Buzzer 1',
+      position: { x: 0, y: 0 },
+      config: {},
+      pins: { signal: 'D8' as const },
+    };
+    const toneWorkspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'buzzer_play',
+                  fields: { COMPONENT: 'bz1', FREQ: 880 },
+                  next: { block: { type: 'delay_ms', fields: { DELAY: 200 } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const ctx = contextFor(toneWorkspace, [buzzer]);
+    expect(await evaluateCheck({ kind: 'runtimeTonePlays', pin: 'D8' }, ctx)).toBe(true);
+    expect(await evaluateCheck({ kind: 'runtimeTonePlays', pin: 'D4' }, ctx)).toBe(false);
+  });
+});

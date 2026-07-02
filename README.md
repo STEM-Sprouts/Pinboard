@@ -163,15 +163,21 @@ Phase 1 — learning-loop MVP (complete):
   constrain/min/max/abs, comments, plus component convenience blocks
   (LED brightness & blink, button wait-until-pressed, pot map/threshold) —
   every one lowering through instance config, never hardcoded polarity
-- ✅ **Four lessons** (the full MVP+ ladder): Blink, Change Blink Speed,
-  Button Controls LED, Potentiometer Controls Brightness — checks run the
-  program headless and assert on the real trace ("the program really writes PWM")
+- ✅ **Seven lessons**: Blink, Change Blink Speed, Button Controls LED,
+  Potentiometer Controls Brightness, Blink Without Delay (millis), Servo
+  Sweep, Buzzer Alarm — checks run the program headless and assert on the
+  real trace ("the LED really blinks", "the arm really sweeps")
 - ✅ **Editor modes**: beginner / intermediate / advanced filter what the toolbox
   *offers* only; a mode switch can never touch blocks already in the workspace
   (E2E-enforced), and the mode persists in the project document
 - ✅ Playwright E2E suite (22 flows) runs as its own CI job alongside
   typecheck/lint/unit and the arduino-cli fixture-compile job
-- ⏳ Next: Phase 2 (Supabase cloud save), then buzzer & servo components (Phase 3)
+- ✅ **Buzzer & Servo** (Phase 3): placeable components with live panel visuals
+  (tone Hz, angle dial), blocks that lower through instances (Servo.h and
+  attach() appear in setup() automatically), timer-conflict warnings, and
+  diagnostic quick fixes ("Move LED 1 to D13" — offered, never auto-applied)
+- ⏳ Next: Phase 2 cloud save (Supabase project + env keys needed), then the
+  feature-gated compile backend (Phase 4) and share links (Phase 5)
 
 ---
 

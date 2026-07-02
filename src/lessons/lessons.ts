@@ -232,4 +232,171 @@ export const lessons: Lesson[] = [
       },
     ],
   },
+  {
+    id: 'blink-without-delay',
+    title: 'Blink Without Delay',
+    estimatedMinutes: 30,
+    targetGradeBand: 'mixed',
+    steps: [
+      {
+        id: 'freeze',
+        title: 'Feel the freeze',
+        instructions:
+          'Run the starter blink and hold the virtual button. Nothing can respond — during delay(500) the Arduino is frozen, on purpose. This lesson fixes that.',
+        hints: [],
+      },
+      {
+        id: 'level-up',
+        title: 'Switch to Intermediate',
+        instructions:
+          'Change the editor mode (top left) to Intermediate. Variables and Time categories appear — the blocks were always real Arduino, you just earned more of them.',
+        hints: [],
+      },
+      {
+        id: 'memory',
+        title: 'Give the program memory',
+        instructions: 'Create two variables: lastFlip and ledOn. They live above setup() as globals — check the preview.',
+        hints: ['Variables keep their value between loop() passes because they are globals.'],
+      },
+      {
+        id: 'clockwatch',
+        title: 'Watch the clock instead of sleeping',
+        instructions:
+          'Clear the loop and build: if millis() - lastFlip ≥ 500 do → set lastFlip to millis(); if ledOn = 0 do turn LED on, set ledOn to 1, else turn LED off, set ledOn to 0.',
+        hints: [
+          'Forgot to set lastFlip inside the if? The condition stays true and the LED flickers every pass — watch for it.',
+        ],
+      },
+      {
+        id: 'prove',
+        title: 'Prove there is no delay',
+        instructions: 'Read the preview: no delay() anywhere. Run — the LED still blinks, because loop() checks the clock thousands of times a second.',
+        hints: ['Extension: two LEDs at different speeds — impossible with delay(), easy with millis().'],
+      },
+    ],
+    checks: [
+      {
+        id: 'led-on-d13',
+        description: 'The LED is connected to D13',
+        check: { kind: 'componentOnPin', componentType: 'led', pinRole: 'signal', expectedPin: 'D13' },
+      },
+      {
+        id: 'no-delay',
+        description: 'Your program never uses delay()',
+        check: { kind: 'lacksInstruction', statementKind: 'delay' },
+      },
+      {
+        id: 'still-blinks',
+        description: 'The LED really blinks anyway',
+        check: { kind: 'runtimePinToggles', pin: 'D13' },
+      },
+    ],
+  },
+  {
+    id: 'servo-sweep',
+    title: 'Servo Sweep',
+    estimatedMinutes: 20,
+    targetGradeBand: 'mixed',
+    steps: [
+      {
+        id: 'add-servo',
+        title: 'Add a servo',
+        instructions:
+          'Add a Servo in the hardware panel — it defaults to D9. Servos are told an angle, not a brightness, so they do not need a PWM pin.',
+        hints: [],
+      },
+      {
+        id: 'for-loop',
+        title: 'Count with a for-loop',
+        instructions:
+          'Switch to Intermediate mode. From Control, build: for angle from 0 to 180 by 30 → set Servo 1 angle to angle, wait 200 ms.',
+        hints: ['No wait inside the loop? The sweep finishes faster than the eye can follow.'],
+      },
+      {
+        id: 'free-code',
+        title: 'Find the code you did not write',
+        instructions:
+          'Read the preview: #include <Servo.h> and servo1.attach(9) appeared in setup() by themselves — the code a servo always needs.',
+        hints: [],
+      },
+      {
+        id: 'run',
+        title: 'Run the sweep',
+        instructions: 'Run. The arm steps 0, 30, 60 … 180, then repeats because loop() runs the for-loop again.',
+        hints: ['Extension: sweep back down with a second for-loop from 180 to 0 by -30.'],
+      },
+    ],
+    checks: [
+      {
+        id: 'servo-exists',
+        description: 'A Servo is in the hardware panel',
+        check: { kind: 'hasComponent', componentType: 'servo' },
+      },
+      {
+        id: 'servo-on-d9',
+        description: 'The Servo is connected to D9',
+        check: { kind: 'componentOnPin', componentType: 'servo', pinRole: 'signal', expectedPin: 'D9' },
+      },
+      {
+        id: 'uses-for',
+        description: 'Your program counts with a for-loop',
+        check: { kind: 'hasInstruction', statementKind: 'forRange' },
+      },
+      {
+        id: 'really-sweeps',
+        description: 'The arm really sweeps through angles',
+        check: { kind: 'runtimeServoMoves', pin: 'D9' },
+      },
+    ],
+  },
+  {
+    id: 'buzzer-alarm',
+    title: 'Buzzer Alarm',
+    estimatedMinutes: 15,
+    targetGradeBand: 'mixed',
+    steps: [
+      {
+        id: 'add-buzzer',
+        title: 'Add a buzzer',
+        instructions:
+          'Add a Buzzer — it defaults to D8, away from pins where tone() can fight the PWM timer (D3/D11 — move it there later and read the warning).',
+        hints: [],
+      },
+      {
+        id: 'siren',
+        title: 'Build the siren',
+        instructions: 'In loop: play Buzzer 1 at 880 Hz → wait 300 ms → play at 440 Hz → wait 300 ms.',
+        hints: ['A tone with no wait after it gets replaced instantly — you would hear only the last one.'],
+      },
+      {
+        id: 'sound-is-state',
+        title: 'Sound keeps going by itself',
+        instructions:
+          'Read the preview: tone(8, 880); keeps sounding until you change or stop it. The waits set the rhythm, not the sound.',
+        hints: ['Add "stop Buzzer 1" and a wait to put silence in the pattern.'],
+      },
+    ],
+    checks: [
+      {
+        id: 'buzzer-exists',
+        description: 'A Buzzer is in the hardware panel',
+        check: { kind: 'hasComponent', componentType: 'buzzer' },
+      },
+      {
+        id: 'buzzer-on-d8',
+        description: 'The Buzzer is connected to D8',
+        check: { kind: 'componentOnPin', componentType: 'buzzer', pinRole: 'signal', expectedPin: 'D8' },
+      },
+      {
+        id: 'uses-tone',
+        description: 'Your program plays a tone',
+        check: { kind: 'hasInstruction', statementKind: 'tone' },
+      },
+      {
+        id: 'really-sounds',
+        description: 'A tone really sounds when the program runs',
+        check: { kind: 'runtimeTonePlays', pin: 'D8' },
+      },
+    ],
+  },
 ];
