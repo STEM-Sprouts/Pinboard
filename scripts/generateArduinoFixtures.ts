@@ -12,6 +12,7 @@ import {
   blinkProgram,
   blinkWithoutDelayProgram,
   buttonControlsLedProgram,
+  potBrightnessProgram,
   servoSweepProgram,
 } from '../src/testing/fixtures';
 import type { ProgramIR } from '../src/ir/types';
@@ -20,6 +21,7 @@ const fixtures: Record<string, ProgramIR> = {
   blink: blinkProgram,
   'blink-without-delay': blinkWithoutDelayProgram,
   'button-controls-led': buttonControlsLedProgram,
+  'potentiometer-brightness': potBrightnessProgram,
   'servo-sweep': servoSweepProgram,
 };
 
