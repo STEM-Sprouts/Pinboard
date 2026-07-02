@@ -64,13 +64,32 @@ test.describe('app shell', () => {
     await expect(preview).toContainText('void setup()');
   });
 
-  test('renders the Blockly toolbox with all categories and opens a flyout', async ({ page }) => {
+  test('renders the beginner toolbox and opens a flyout', async ({ page }) => {
     await expect(page.locator('.blocklyToolbox')).toBeVisible();
-    for (const category of ['Structure', 'Components', 'Pins', 'Control', 'Logic', 'Serial']) {
+    // Default mode is beginner: guided categories only (persistence.md §2).
+    for (const category of ['Structure', 'Components', 'Control', 'Logic', 'Math', 'Serial']) {
       await expect(page.getByRole('treeitem', { name: category })).toBeVisible();
     }
-    await page.getByRole('treeitem', { name: 'Pins' }).click();
+    await expect(page.getByRole('treeitem', { name: 'Pins' })).toHaveCount(0);
+    await page.getByRole('treeitem', { name: 'Components' }).click();
     await expect(page.locator('.blocklyToolboxFlyout')).toBeVisible();
+  });
+
+  test('editor mode filters the toolbox only — loaded blocks and code survive', async ({ page }) => {
+    const preview = page.getByTestId('code-preview');
+    await expect(preview).toContainText('digitalWrite(13, HIGH);');
+
+    // Intermediate offers Pins/Variables/Time.
+    await page.getByTestId('editor-mode').selectOption('intermediate');
+    await expect(page.getByRole('treeitem', { name: 'Pins' })).toBeVisible();
+    await expect(page.getByRole('treeitem', { name: 'Variables' })).toBeVisible();
+
+    // Back to beginner: the toolbox shrinks, but the workspace's set_pin
+    // blocks are untouched and the generated C is identical.
+    await page.getByTestId('editor-mode').selectOption('beginner');
+    await expect(page.getByRole('treeitem', { name: 'Pins' })).toHaveCount(0);
+    await expect(page.locator('[data-id="starter_on"]').first()).toBeVisible();
+    await expect(preview).toContainText('digitalWrite(13, HIGH);');
   });
 });
 
@@ -141,7 +160,7 @@ test.describe('stress', () => {
 
   test('repeated toolbox interaction while the emulator runs stays responsive', async ({ page }) => {
     await startEmulator(page);
-    for (const category of ['Structure', 'Pins', 'Control', 'Logic', 'Serial', 'Pins', 'Control']) {
+    for (const category of ['Structure', 'Components', 'Control', 'Logic', 'Serial', 'Components', 'Control']) {
       await page.getByRole('treeitem', { name: category }).click();
       await expect(page.locator('.blocklyToolboxFlyout')).toBeVisible();
     }

@@ -1,9 +1,12 @@
 import { useRef } from 'react';
 import { Play, Square, RotateCcw, Download, Upload, BookOpen } from 'lucide-react';
+import type { EditorMode } from '../persistence/projectDocument';
 
 interface HeaderProps {
   status: 'idle' | 'compiling' | 'running' | 'error';
   saveNote: string;
+  editorMode: EditorMode;
+  onEditorModeChange: (mode: EditorMode) => void;
   onRun: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -12,7 +15,18 @@ interface HeaderProps {
   onToggleLessons: () => void;
 }
 
-export default function Header({ status, saveNote, onRun, onStop, onReset, onExport, onImportFile, onToggleLessons }: HeaderProps) {
+export default function Header({
+  status,
+  saveNote,
+  editorMode,
+  onEditorModeChange,
+  onRun,
+  onStop,
+  onReset,
+  onExport,
+  onImportFile,
+  onToggleLessons,
+}: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -29,6 +43,17 @@ export default function Header({ status, saveNote, onRun, onStop, onReset, onExp
         >
           <BookOpen size={15} /> Lessons
         </button>
+        <select
+          data-testid="editor-mode"
+          value={editorMode}
+          onChange={(e) => onEditorModeChange(e.target.value as EditorMode)}
+          className="ml-2 px-2 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border-none"
+          title="Editor mode — changes which blocks the toolbox offers"
+        >
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
         <span data-testid="save-note" className="text-xs text-gray-500 ml-2">{saveNote}</span>
       </div>
 

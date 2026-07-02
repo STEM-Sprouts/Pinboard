@@ -19,7 +19,13 @@ import {
 import type { PinId } from './hardware/types';
 import { setRegisteredComponents } from './blocks/componentRegistry';
 import { LocalProjectStore } from './persistence/localProjectStore';
-import { createLocalProject, type ComponentInstance, type PinboardProjectDocument } from './persistence/projectDocument';
+import { buildToolbox } from './blocks/toolbox';
+import {
+  createLocalProject,
+  type ComponentInstance,
+  type EditorMode,
+  type PinboardProjectDocument,
+} from './persistence/projectDocument';
 import { exportFileName, exportProjectJson, importProjectJson } from './persistence/importExport';
 import LessonPanel from './components/LessonPanel';
 import { lessons } from './lessons/lessons';
@@ -59,6 +65,12 @@ function App() {
   const [serialOutput, setSerialOutput] = useState<string[]>([]);
   const [saveNote, setSaveNote] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<EditorMode>(
+    () => loadedProject.settings?.editorMode ?? 'beginner',
+  );
+  // Mode filters what the toolbox OFFERS only — never the loaded workspace
+  // (persistence.md §2).
+  const toolbox = useMemo(() => buildToolbox(editorMode), [editorMode]);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(
     () => loadedProject.lessons?.lessonId ?? null,
@@ -103,9 +115,10 @@ function App() {
           .filter(([, passed]) => passed)
           .map(([id]) => id),
       },
+      settings: { ...projectRef.current.settings, editorMode },
       metadata: { ...projectRef.current.metadata, updatedAt: new Date().toISOString() },
     };
-  }, [workspaceJson, components, activeLessonId, checkResults]);
+  }, [workspaceJson, components, activeLessonId, checkResults, editorMode]);
 
   // Debounced autosave; a failure warns and points to export, never crashes.
   useEffect(() => {
@@ -266,6 +279,7 @@ function App() {
       setButtonPressed({});
       setPotValues({});
       setActiveLessonId(result.document.lessons?.lessonId ?? null);
+      setEditorMode(result.document.settings?.editorMode ?? 'beginner');
       setCheckResults({});
       setWorkspaceNonce((nonce) => nonce + 1);
       setSaveNote('Project imported');
@@ -284,6 +298,8 @@ function App() {
       <Header
         status={emulatorStatus}
         saveNote={saveNote}
+        editorMode={editorMode}
+        onEditorModeChange={setEditorMode}
         onRun={handleRun}
         onStop={handleStop}
         onReset={handleReset}
@@ -297,6 +313,7 @@ function App() {
           <BlocklyWorkspace
             key={`${loadedProject.metadata.id}:${workspaceNonce}`}
             initialWorkspace={loadedProject.workspace.data as BlocklyWorkspaceJson}
+            toolbox={toolbox}
             onWorkspaceChange={handleWorkspaceChange}
             onSelectionChange={handleBlockSelection}
           />
