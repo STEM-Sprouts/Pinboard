@@ -45,7 +45,30 @@ type Ctx = {
   componentsById: Map<string, ComponentInstance>;
   /** Input pins used by reads — lowered to inferred pinMode nodes in setup(). */
   inferredInputModes: Map<PinId, 'INPUT' | 'INPUT_PULLUP'>;
+  /** Blockly variable id → user-visible name (from the workspace JSON). */
+  variableNames: Map<string, string>;
+  /** Variables actually referenced — emitted as globals (codegen.md §6). */
+  usedVariables: Set<string>;
 };
+
+const ARITH_OPS: Record<string, '+' | '-' | '*' | '/' | '%'> = {
+  ADD: '+', SUB: '-', MUL: '*', DIV: '/', MOD: '%',
+};
+const COMPARE_OPS: Record<string, '==' | '!=' | '<' | '<=' | '>' | '>='> = {
+  EQ: '==', NEQ: '!=', LT: '<', LTE: '<=', GT: '>', GTE: '>=',
+};
+const NEGATED_COMPARE: Record<string, '==' | '!=' | '<' | '<=' | '>' | '>='> = {
+  '==': '!=', '!=': '==', '<': '>=', '<=': '>', '>': '<=', '>=': '<',
+};
+
+/** `wait until c` prints as `while (!c) { }`; fold the negation into a
+ * comparison when possible so beginners read `!= ` instead of `!(...)`. */
+function negateExpression(expr: ExpressionIR): ExpressionIR {
+  if (expr.kind === 'binary' && expr.op in NEGATED_COMPARE) {
+    return { ...expr, op: NEGATED_COMPARE[expr.op] };
+  }
+  return { kind: 'unary', op: 'not', arg: expr };
+}
 
 function numField(block: BlocklyBlockJson, name: string, fallback: number): number {
   const value = block.fields?.[name];
@@ -74,6 +97,26 @@ function digitalPin(raw: number, ctx: Ctx, blockId?: string): PinId {
 function inputBlock(block: BlocklyBlockJson, name: string): BlocklyBlockJson | undefined {
   const input = block.inputs?.[name];
   return input?.block ?? input?.shadow;
+}
+
+/** field_variable serializes as `{ id }`; resolve to the variable's name. */
+function varField(block: BlocklyBlockJson, name: string, ctx: Ctx): string | null {
+  const raw = block.fields?.[name];
+  const id =
+    typeof raw === 'object' && raw !== null && 'id' in raw ? String((raw as { id: unknown }).id) : null;
+  const resolved = id !== null ? ctx.variableNames.get(id) : typeof raw === 'string' ? raw : null;
+  if (!resolved) {
+    ctx.diagnostics.push({
+      id: `unknown-variable:${block.id ?? block.type}`,
+      severity: 'error',
+      title: 'Unknown variable',
+      message: 'This block refers to a variable that no longer exists. Pick or create one in the dropdown.',
+      source: { blockId: block.id },
+    });
+    return null;
+  }
+  ctx.usedVariables.add(resolved);
+  return resolved;
 }
 
 /**
@@ -143,6 +186,63 @@ function lowerValue(block: BlocklyBlockJson | undefined, fallback: ExpressionIR,
     }
     case 'string_text':
       return { kind: 'string', value: strField(block, 'TEXT', '') };
+    case 'num_value':
+      return { kind: 'num', value: numField(block, 'NUM', 0) };
+    case 'math_arith': {
+      const op = ARITH_OPS[strField(block, 'OP', 'ADD')] ?? '+';
+      return {
+        kind: 'binary',
+        op,
+        left: lowerValue(inputBlock(block, 'A'), { kind: 'num', value: 0 }, ctx),
+        right: lowerValue(inputBlock(block, 'B'), { kind: 'num', value: 0 }, ctx),
+      };
+    }
+    case 'compare_op': {
+      const op = COMPARE_OPS[strField(block, 'OP', 'EQ')] ?? '==';
+      return {
+        kind: 'binary',
+        op,
+        left: lowerValue(inputBlock(block, 'A'), { kind: 'num', value: 0 }, ctx),
+        right: lowerValue(inputBlock(block, 'B'), { kind: 'num', value: 0 }, ctx),
+      };
+    }
+    case 'logic_andor':
+      return {
+        kind: 'binary',
+        op: strField(block, 'OP', 'AND') === 'OR' ? '||' : '&&',
+        left: lowerValue(inputBlock(block, 'A'), { kind: 'bool', value: false }, ctx),
+        right: lowerValue(inputBlock(block, 'B'), { kind: 'bool', value: false }, ctx),
+      };
+    case 'not_op':
+      return {
+        kind: 'unary',
+        op: 'not',
+        arg: lowerValue(inputBlock(block, 'BOOL'), { kind: 'bool', value: false }, ctx),
+      };
+    case 'var_get': {
+      const name = varField(block, 'VAR', ctx);
+      return name === null ? fallback : { kind: 'var', name };
+    }
+    case 'millis_now':
+      return { kind: 'millis' };
+    case 'random_range': {
+      const from = Math.trunc(numField(block, 'FROM', 1));
+      const to = Math.trunc(numField(block, 'TO', 10));
+      // Arduino random(min, max) excludes max; the block is inclusive.
+      return { kind: 'call', fn: 'random', args: [{ kind: 'num', value: from }, { kind: 'num', value: to + 1 }] };
+    }
+    case 'map_range':
+      return {
+        kind: 'call',
+        fn: 'map',
+        args: [
+          lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx),
+          { kind: 'num', value: numField(block, 'FROMLOW', 0) },
+          { kind: 'num', value: numField(block, 'FROMHIGH', 1023) },
+          { kind: 'num', value: numField(block, 'TOLOW', 0) },
+          { kind: 'num', value: numField(block, 'TOHIGH', 255) },
+        ],
+      };
     default:
       ctx.diagnostics.push({
         id: `unsupported-value-block:${block.type}`,
@@ -197,6 +297,31 @@ function lowerStatement(block: BlocklyBlockJson, ctx: Ctx): StatementIR[] {
           newline: true,
         },
       ];
+    case 'if_else':
+      return [
+        {
+          kind: 'if',
+          condition: lowerValue(inputBlock(block, 'CONDITION'), { kind: 'bool', value: false }, ctx),
+          then: lowerChain(inputBlock(block, 'DO'), ctx),
+          else: lowerChain(inputBlock(block, 'ELSE'), ctx),
+        },
+      ];
+    case 'wait_until': {
+      const condition = lowerValue(inputBlock(block, 'CONDITION'), { kind: 'bool', value: true }, ctx);
+      // A real spin-wait: while (!condition) { } — honest Arduino semantics
+      // (codegen.md §9); the runtime's loop budget keeps it cooperative.
+      return [{ kind: 'while', condition: negateExpression(condition), body: [] }];
+    }
+    case 'var_set': {
+      const name = varField(block, 'VAR', ctx);
+      if (name === null) return [];
+      return [{ kind: 'assign', name, value: lowerValue(inputBlock(block, 'VALUE'), { kind: 'num', value: 0 }, ctx) }];
+    }
+    case 'var_change': {
+      const name = varField(block, 'VAR', ctx);
+      if (name === null) return [];
+      return [{ kind: 'change', name, delta: lowerValue(inputBlock(block, 'DELTA'), { kind: 'num', value: 1 }, ctx) }];
+    }
     default:
       ctx.diagnostics.push({
         id: `unsupported-statement-block:${block.type}`,
@@ -221,10 +346,20 @@ export function lowerWorkspaceToIR(
   json: BlocklyWorkspaceJson,
   components: ComponentInstance[] = [],
 ): LowerResult {
+  const variableNames = new Map<string, string>();
+  for (const entry of json.variables ?? []) {
+    if (typeof entry === 'object' && entry !== null) {
+      const { id, name } = entry as { id?: unknown; name?: unknown };
+      if (typeof id === 'string' && typeof name === 'string') variableNames.set(id, name);
+    }
+  }
+
   const ctx: Ctx = {
     diagnostics: [],
     componentsById: new Map(components.map((c) => [c.id, c])),
     inferredInputModes: new Map(),
+    variableNames,
+    usedVariables: new Set(),
   };
   const setup: StatementIR[] = [];
   const loop: StatementIR[] = [];
@@ -254,12 +389,18 @@ export function lowerWorkspaceToIR(
     .sort(([a], [b]) => Number(a.slice(1)) - Number(b.slice(1)))
     .map(([pin, mode]) => ({ kind: 'pinMode', pin, mode, explicit: false }));
 
+  // Beginner variables are globals with a zero initializer so counters
+  // persist across loop() passes (codegen.md §6); sorted for determinism.
+  const globals = [...ctx.usedVariables]
+    .sort()
+    .map((name) => ({ name, valueType: 'number' as const, initial: { kind: 'num', value: 0 } as const }));
+
   return {
     program: {
       schemaVersion: 1,
       boardId: 'arduino-uno',
       includes: [],
-      globals: [],
+      globals,
       setup: [...inputModes, ...setup],
       loop,
       // Fixed metadata: the printer must stay a deterministic function of

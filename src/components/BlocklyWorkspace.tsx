@@ -53,7 +53,42 @@ const TOOLBOX_CONFIG = {
       name: 'Logic',
       colour: '#59C059',
       contents: [
-        { kind: 'block', type: 'if_do' }
+        { kind: 'block', type: 'if_do' },
+        { kind: 'block', type: 'if_else' },
+        { kind: 'block', type: 'compare_op' },
+        { kind: 'block', type: 'logic_andor' },
+        { kind: 'block', type: 'not_op' },
+        { kind: 'block', type: 'wait_until' }
+      ]
+    },
+    {
+      kind: 'category',
+      name: 'Math',
+      colour: '#59A869',
+      contents: [
+        { kind: 'block', type: 'num_value' },
+        { kind: 'block', type: 'math_arith' },
+        { kind: 'block', type: 'random_range' },
+        { kind: 'block', type: 'map_range' }
+      ]
+    },
+    {
+      kind: 'category',
+      name: 'Variables',
+      colour: '#FF8C1A',
+      contents: [
+        { kind: 'block', type: 'var_set' },
+        { kind: 'block', type: 'var_change' },
+        { kind: 'block', type: 'var_get' }
+      ]
+    },
+    {
+      kind: 'category',
+      name: 'Time',
+      colour: '#FFBF00',
+      contents: [
+        { kind: 'block', type: 'delay_ms' },
+        { kind: 'block', type: 'millis_now' }
       ]
     },
     {

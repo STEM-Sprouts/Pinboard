@@ -8,6 +8,8 @@ const COLORS = {
   LOGIC: '#59C059',
   SERIAL: '#5CB1D6',
   COMPONENTS: '#9966FF',
+  MATH: '#59A869',
+  VARIABLES: '#FF8C1A',
 };
 
 export const defineBlocks = () => {
@@ -191,4 +193,175 @@ export const defineBlocks = () => {
       this.setTooltip('Reads the knob position, 0–1023');
     },
   };
+
+  // Variables / Logic / Math / Time (codegen.md §5). Variables use Blockly's
+  // field_variable for the create/rename UI; all beginner variables lower to
+  // globals so counters persist across loop() passes (codegen.md §6).
+  Blockly.defineBlocksWithJsonArray([
+    {
+      "type": "num_value",
+      "message0": "%1",
+      "args0": [{ "type": "field_number", "name": "NUM", "value": 0 }],
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "A number",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_arith",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A" },
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["+", "ADD"], ["−", "SUB"], ["×", "MUL"], ["÷", "DIV"], ["remainder", "MOD"]]
+        },
+        { "type": "input_value", "name": "B" }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Do math with two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "random_range",
+      "message0": "random from %1 to %2",
+      "args0": [
+        { "type": "field_number", "name": "FROM", "value": 1, "precision": 1 },
+        { "type": "field_number", "name": "TO", "value": 10, "precision": 1 }
+      ],
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Picks a random whole number in the range (both ends included)",
+      "helpUrl": ""
+    },
+    {
+      "type": "map_range",
+      "message0": "map %1 from %2 – %3 to %4 – %5",
+      "args0": [
+        { "type": "input_value", "name": "VALUE" },
+        { "type": "field_number", "name": "FROMLOW", "value": 0 },
+        { "type": "field_number", "name": "FROMHIGH", "value": 1023 },
+        { "type": "field_number", "name": "TOLOW", "value": 0 },
+        { "type": "field_number", "name": "TOHIGH", "value": 255 }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Rescales a value from one range to another (like Arduino map)",
+      "helpUrl": ""
+    },
+    {
+      "type": "compare_op",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A" },
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["=", "EQ"], ["≠", "NEQ"], ["<", "LT"], ["≤", "LTE"], [">", "GT"], ["≥", "GTE"]]
+        },
+        { "type": "input_value", "name": "B" }
+      ],
+      "inputsInline": true,
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "Compare two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "logic_andor",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A", "check": "Boolean" },
+        { "type": "field_dropdown", "name": "OP", "options": [["and", "AND"], ["or", "OR"]] },
+        { "type": "input_value", "name": "B", "check": "Boolean" }
+      ],
+      "inputsInline": true,
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "Combine two conditions",
+      "helpUrl": ""
+    },
+    {
+      "type": "not_op",
+      "message0": "not %1",
+      "args0": [{ "type": "input_value", "name": "BOOL", "check": "Boolean" }],
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "True becomes false, false becomes true",
+      "helpUrl": ""
+    },
+    {
+      "type": "if_else",
+      "message0": "if %1 do %2 %3 else %4 %5",
+      "args0": [
+        { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "DO" },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "ELSE" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.LOGIC,
+      "tooltip": "Do one thing when true, another when false",
+      "helpUrl": ""
+    },
+    {
+      "type": "wait_until",
+      "message0": "wait until %1",
+      "args0": [{ "type": "input_value", "name": "CONDITION", "check": "Boolean" }],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.CONTROL,
+      "tooltip": "Pause here until the condition becomes true (checks it constantly)",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_get",
+      "message0": "%1",
+      "args0": [{ "type": "field_variable", "name": "VAR", "variable": "count" }],
+      "output": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "The value of this variable",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_set",
+      "message0": "set %1 to %2",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "count" },
+        { "type": "input_value", "name": "VALUE" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "Store a value in a variable",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_change",
+      "message0": "change %1 by %2",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "count" },
+        { "type": "input_value", "name": "DELTA" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "Add to a variable (use a negative number to subtract)",
+      "helpUrl": ""
+    },
+    {
+      "type": "millis_now",
+      "message0": "milliseconds since start",
+      "output": "Number",
+      "colour": COLORS.CONTROL,
+      "tooltip": "How long the program has been running (like a stopwatch that never pauses)",
+      "helpUrl": ""
+    }
+  ]);
 };

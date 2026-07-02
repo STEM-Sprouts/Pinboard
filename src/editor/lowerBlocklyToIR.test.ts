@@ -9,6 +9,7 @@ import { printArduino } from '../arduino/printArduino';
 import type { PinId } from '../hardware/types';
 import type { ComponentInstance } from '../persistence/projectDocument';
 import { blinkExpectedC } from '../testing/fixtures';
+import { runHeadless } from '../testing/synthetic';
 import { lowerWorkspaceToIR, type BlocklyWorkspaceJson } from './lowerBlocklyToIR';
 import { starterWorkspaceJson } from './starterProject';
 
@@ -278,5 +279,229 @@ describe('component blocks (config-driven, never hardcoded polarity)', () => {
     const { program, diagnostics } = lowerWorkspaceToIR(ledWorkspace('led-a', 'ON'), [makeLed('led-a', null)]);
     expect(program.loop).toEqual([]);
     expect(diagnostics.some((d) => d.id === 'component-unpinned:led-a' && d.severity === 'error')).toBe(true);
+  });
+});
+
+describe('variables, logic, math, time blocks', () => {
+  const counterWorkspace: BlocklyWorkspaceJson = {
+    variables: [{ id: 'v1', name: 'count' }],
+    blocks: {
+      languageVersion: 0,
+      blocks: [
+        {
+          type: 'arduino_loop',
+          inputs: {
+            DO: {
+              block: {
+                type: 'var_change',
+                fields: { VAR: { id: 'v1' } },
+                inputs: { DELTA: { block: { type: 'num_value', fields: { NUM: 1 } } } },
+                next: {
+                  block: {
+                    type: 'serial_print',
+                    inputs: { VALUE: { block: { type: 'var_get', fields: { VAR: { id: 'v1' } } } } },
+                    next: { block: { type: 'delay_ms', fields: { DELAY: 100 } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    },
+  };
+
+  it('variables become zero-initialized globals and persist across loop passes', async () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(counterWorkspace);
+    expect(diagnostics).toEqual([]);
+    expect(program.globals).toEqual([
+      { name: 'count', valueType: 'number', initial: { kind: 'num', value: 0 } },
+    ]);
+
+    const { code } = printArduino(program);
+    expect(code).toContain('long count = 0;');
+    expect(code).toContain('count += 1;');
+    expect(code).toContain('Serial.println(count);');
+
+    // Behavioral proof on the same IR: the counter really counts.
+    const run = await runHeadless(program, { maxFrames: 100 });
+    expect(run.serialLines.slice(0, 3)).toEqual(['1', '2', '3']);
+  });
+
+  it('if/else with a comparison prints readable C', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      variables: [{ id: 'v1', name: 'count' }],
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'if_else',
+                  inputs: {
+                    CONDITION: {
+                      block: {
+                        type: 'compare_op',
+                        fields: { OP: 'GTE' },
+                        inputs: {
+                          A: { block: { type: 'var_get', fields: { VAR: { id: 'v1' } } } },
+                          B: { block: { type: 'num_value', fields: { NUM: 3 } } },
+                        },
+                      },
+                    },
+                    DO: { block: { type: 'set_pin', fields: { PIN: 13, STATE: 'HIGH' } } },
+                    ELSE: { block: { type: 'set_pin', fields: { PIN: 13, STATE: 'LOW' } } },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { code } = printArduino(lowerWorkspaceToIR(workspace).program);
+    expect(code).toContain('if (count >= 3) {');
+    expect(code).toContain('} else {');
+  });
+
+  it('wait_until folds the negation into the comparison', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      variables: [{ id: 'v1', name: 'count' }],
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'wait_until',
+                  inputs: {
+                    CONDITION: {
+                      block: {
+                        type: 'compare_op',
+                        fields: { OP: 'EQ' },
+                        inputs: {
+                          A: { block: { type: 'var_get', fields: { VAR: { id: 'v1' } } } },
+                          B: { block: { type: 'num_value', fields: { NUM: 5 } } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { code } = printArduino(lowerWorkspaceToIR(workspace).program);
+    expect(code).toContain('while (count != 5) { }');
+  });
+
+  it('wait_until on a bare read prints a !read spin', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'wait_until',
+                  inputs: { CONDITION: { block: { type: 'read_pin', fields: { PIN: 2 } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { code } = printArduino(lowerWorkspaceToIR(workspace).program);
+    expect(code).toContain('while (!digitalRead(2)) { }');
+  });
+
+  it('random is inclusive for students, exclusive in the C (Arduino semantics)', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'serial_print',
+                  inputs: { VALUE: { block: { type: 'random_range', fields: { FROM: 1, TO: 10 } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { code } = printArduino(lowerWorkspaceToIR(workspace).program);
+    expect(code).toContain('random(1, 11)');
+  });
+
+  it('map_range lowers to the Arduino map() call', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      variables: [{ id: 'v1', name: 'knob' }],
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'serial_print',
+                  inputs: {
+                    VALUE: {
+                      block: {
+                        type: 'map_range',
+                        fields: { FROMLOW: 0, FROMHIGH: 1023, TOLOW: 0, TOHIGH: 255 },
+                        inputs: { VALUE: { block: { type: 'var_get', fields: { VAR: { id: 'v1' } } } } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { code } = printArduino(lowerWorkspaceToIR(workspace).program);
+    expect(code).toContain('map(knob, 0, 1023, 0, 255)');
+  });
+
+  it('a variable block with a dangling id is an error, not a crash', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      variables: [],
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'var_set',
+                  fields: { VAR: { id: 'ghost' } },
+                  inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: 1 } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { program, diagnostics } = lowerWorkspaceToIR(workspace);
+    expect(program.loop).toEqual([]);
+    expect(diagnostics.some((d) => d.id.startsWith('unknown-variable') && d.severity === 'error')).toBe(true);
   });
 });

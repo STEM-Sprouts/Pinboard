@@ -149,8 +149,11 @@ Phase 1 — learning-loop MVP (in progress):
   checks inspect the project document, the IR, and a headless simulation trace
   ("the LED really blinks"), never the generated code text; progress persists
   into the project document (`src/lessons/`)
-- ⏳ Next: variables/logic/math block library, CodeMirror preview with line↔block
-  mapping, buzzer & servo components
+- ✅ **Variables / Logic / Math / Time blocks**: variables (create/set/change/get, lowered
+  to zero-initialized globals so counters survive `loop()`), if/else, comparisons,
+  and/or/not, wait-until (negation folded into readable C), arithmetic, inclusive
+  random, Arduino `map()`, and `millis()`
+- ⏳ Next: CodeMirror preview with line↔block mapping, buzzer & servo components
 
 ---
 
