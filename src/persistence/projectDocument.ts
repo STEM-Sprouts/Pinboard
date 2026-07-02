@@ -83,6 +83,7 @@ export function createLocalProject(
   workspaceData: unknown,
   nowIso: string,
   title = 'My Pinboard Project',
+  components: ComponentInstance[] = [],
 ): PinboardProjectDocument {
   return {
     schemaVersion: 1,
@@ -90,7 +91,7 @@ export function createLocalProject(
     metadata: { id, title, createdAt: nowIso, updatedAt: nowIso },
     board: { id: 'arduino-uno', fqbn: 'arduino:avr:uno' },
     workspace: { format: 'blockly-json', data: workspaceData },
-    hardware: { components: [], wiring: [] },
+    hardware: { components, wiring: [] },
     settings: { editorMode: 'beginner', simulationSpeed: 1, showAdvancedBlocks: false },
   };
 }

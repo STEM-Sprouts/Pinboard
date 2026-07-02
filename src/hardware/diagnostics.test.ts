@@ -13,9 +13,24 @@ import {
   servoWrite,
   str,
 } from '../testing/builders';
+import type { ComponentInstance } from '../persistence/projectDocument';
+import type { PinId } from './types';
 import { blinkProgram } from '../testing/fixtures';
 import { arduinoUno } from './boards/arduinoUno';
-import { analyzeProgramDiagnostics } from './diagnostics';
+import { analyzeComponentDiagnostics, analyzeProgramDiagnostics } from './diagnostics';
+
+const instance = (
+  id: string,
+  type: ComponentInstance['type'],
+  pin: PinId | null,
+): ComponentInstance => ({
+  id,
+  type,
+  displayName: id,
+  position: { x: 0, y: 0 },
+  config: {},
+  pins: { signal: pin },
+});
 
 const ids = (programUnderTest: Parameters<typeof analyzeProgramDiagnostics>[0]) =>
   analyzeProgramDiagnostics(programUnderTest, arduinoUno).map((d) => d.id);
@@ -66,5 +81,33 @@ describe('board diagnostics', () => {
 
     const invisible = program({ loop: [delayMs(100)] });
     expect(ids(invisible)).toContain('no-observable-output');
+  });
+});
+
+describe('component binding diagnostics', () => {
+  it('two components on the same pin is an error', () => {
+    const diagnostics = analyzeComponentDiagnostics(blinkProgram, [
+      instance('led-1', 'led', 'D5'),
+      instance('button-1', 'button', 'D5'),
+    ]);
+    const conflict = diagnostics.find((d) => d.id === 'pin-conflict:D5');
+    expect(conflict?.severity).toBe('error');
+    expect(conflict?.message).toContain('led-1');
+    expect(conflict?.message).toContain('button-1');
+  });
+
+  it('an unconnected component is an error', () => {
+    const diagnostics = analyzeComponentDiagnostics(blinkProgram, [instance('led-1', 'led', null)]);
+    expect(diagnostics.some((d) => d.id === 'component-missing-pin:led-1' && d.severity === 'error')).toBe(true);
+  });
+
+  it('writing a pin with no component is the teachable warning', () => {
+    const bare = analyzeComponentDiagnostics(blinkProgram, []);
+    const warning = bare.find((d) => d.id === 'write-without-component:D13');
+    expect(warning?.severity).toBe('warning');
+    expect(warning?.message).toContain('writes to D13');
+
+    const covered = analyzeComponentDiagnostics(blinkProgram, [instance('led-1', 'led', 'D13')]);
+    expect(covered).toEqual([]);
   });
 });

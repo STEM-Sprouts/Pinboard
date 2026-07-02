@@ -1,4 +1,5 @@
 import * as Blockly from 'blockly/core';
+import { componentDropdownOptions } from './componentRegistry';
 
 const COLORS = {
   STRUCTURE: '#FFAB19',
@@ -6,6 +7,7 @@ const COLORS = {
   CONTROL: '#FFBF00',
   LOGIC: '#59C059',
   SERIAL: '#5CB1D6',
+  COMPONENTS: '#9966FF',
 };
 
 export const defineBlocks = () => {
@@ -136,4 +138,57 @@ export const defineBlocks = () => {
       "helpUrl": ""
     }
   ]);
+
+  // Component blocks target placed instances, not raw pins (hardware.md §3).
+  // Their dropdowns list the components currently in the project, so they
+  // are defined in JS with lazy option functions.
+  Blockly.Blocks['led_set'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('turn')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField(
+          new Blockly.FieldDropdown([
+            ['on', 'ON'],
+            ['off', 'OFF'],
+          ]),
+          'STATE',
+        );
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn an LED on or off (respects the LED wiring)');
+    },
+  };
+
+  Blockly.Blocks['button_is_pressed'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('button', '(add a Button first)')),
+          'COMPONENT',
+        )
+        .appendField('is pressed?');
+      this.setOutput(true, 'Boolean');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('True while the button is held down (respects pull mode)');
+    },
+  };
+
+  Blockly.Blocks['pot_read'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('read')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        );
+      this.setOutput(true, 'Number');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Reads the knob position, 0–1023');
+    },
+  };
 };

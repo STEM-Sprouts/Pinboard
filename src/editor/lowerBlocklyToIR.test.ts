@@ -6,9 +6,50 @@
  */
 import { describe, expect, it } from 'vitest';
 import { printArduino } from '../arduino/printArduino';
+import type { PinId } from '../hardware/types';
+import type { ComponentInstance } from '../persistence/projectDocument';
 import { blinkExpectedC } from '../testing/fixtures';
 import { lowerWorkspaceToIR, type BlocklyWorkspaceJson } from './lowerBlocklyToIR';
 import { starterWorkspaceJson } from './starterProject';
+
+const makeLed = (id: string, pin: PinId | null, activeHigh = true): ComponentInstance => ({
+  id,
+  type: 'led',
+  displayName: id,
+  position: { x: 0, y: 0 },
+  config: { color: 'red', activeHigh },
+  pins: { signal: pin },
+});
+
+const makeButton = (id: string, pin: PinId | null, pullMode = 'internal_pullup'): ComponentInstance => ({
+  id,
+  type: 'button',
+  displayName: id,
+  position: { x: 0, y: 0 },
+  config: { pullMode },
+  pins: { signal: pin },
+});
+
+const makePot = (id: string, pin: PinId | null): ComponentInstance => ({
+  id,
+  type: 'potentiometer',
+  displayName: id,
+  position: { x: 0, y: 0 },
+  config: {},
+  pins: { signal: pin },
+});
+
+const ledWorkspace = (componentId: string, state: 'ON' | 'OFF'): BlocklyWorkspaceJson => ({
+  blocks: {
+    languageVersion: 0,
+    blocks: [
+      {
+        type: 'arduino_loop',
+        inputs: { DO: { block: { type: 'led_set', fields: { COMPONENT: componentId, STATE: state } } } },
+      },
+    ],
+  },
+});
 
 describe('Blocks → IR lowering', () => {
   it('lowers the starter blink workspace to IR that prints the canonical blink C', () => {
@@ -136,5 +177,106 @@ describe('Blocks → IR lowering', () => {
     expect(program.setup).toEqual([]);
     expect(program.loop).toEqual([]);
     expect(diagnostics).toEqual([]);
+  });
+});
+
+describe('component blocks (config-driven, never hardcoded polarity)', () => {
+  it('active-high and active-low LEDs emit opposite electrical writes for "on"', () => {
+    const activeHigh = lowerWorkspaceToIR(ledWorkspace('led-a', 'ON'), [makeLed('led-a', 'D13', true)]);
+    const activeLow = lowerWorkspaceToIR(ledWorkspace('led-b', 'ON'), [makeLed('led-b', 'D13', false)]);
+    expect(activeHigh.program.loop[0]).toEqual({
+      kind: 'digitalWrite',
+      pin: 'D13',
+      value: { kind: 'bool', value: true },
+    });
+    expect(activeLow.program.loop[0]).toEqual({
+      kind: 'digitalWrite',
+      pin: 'D13',
+      value: { kind: 'bool', value: false },
+    });
+  });
+
+  it('"off" inverts per wiring too', () => {
+    const activeLowOff = lowerWorkspaceToIR(ledWorkspace('led-b', 'OFF'), [makeLed('led-b', 'D9', false)]);
+    expect(activeLowOff.program.loop[0]).toEqual({
+      kind: 'digitalWrite',
+      pin: 'D9',
+      value: { kind: 'bool', value: true },
+    });
+  });
+
+  it('button pull mode decides the pressed comparison and the pinMode', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'if_do',
+                  inputs: { CONDITION: { block: { type: 'button_is_pressed', fields: { COMPONENT: 'btn' } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const pullup = lowerWorkspaceToIR(workspace, [makeButton('btn', 'D2', 'internal_pullup')]);
+    expect(pullup.program.setup[0]).toEqual({ kind: 'pinMode', pin: 'D2', mode: 'INPUT_PULLUP', explicit: false });
+    expect(pullup.program.loop[0]).toMatchObject({
+      kind: 'if',
+      condition: { kind: 'binary', op: '==', right: { kind: 'bool', value: false } },
+    });
+
+    const pulldown = lowerWorkspaceToIR(workspace, [makeButton('btn', 'D2', 'external_pulldown')]);
+    expect(pulldown.program.setup[0]).toEqual({ kind: 'pinMode', pin: 'D2', mode: 'INPUT', explicit: false });
+    expect(pulldown.program.loop[0]).toMatchObject({
+      kind: 'if',
+      condition: { kind: 'binary', op: '==', right: { kind: 'bool', value: true } },
+    });
+  });
+
+  it('pot_read lowers to analogRead of the instance pin', () => {
+    const workspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'serial_print',
+                  inputs: { VALUE: { block: { type: 'pot_read', fields: { COMPONENT: 'pot' } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const { program, diagnostics } = lowerWorkspaceToIR(workspace, [makePot('pot', 'A0')]);
+    expect(diagnostics).toEqual([]);
+    expect(program.loop[0]).toEqual({
+      kind: 'serialPrint',
+      value: { kind: 'read', op: 'analog', pin: 'A0' },
+      newline: true,
+    });
+  });
+
+  it('a component block without a placed component is an error, not a crash', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(ledWorkspace('__none__', 'ON'), []);
+    expect(program.loop).toEqual([]);
+    expect(diagnostics.some((d) => d.id.startsWith('missing-component') && d.severity === 'error')).toBe(true);
+  });
+
+  it('a component without a pin is an error and the block is skipped', () => {
+    const { program, diagnostics } = lowerWorkspaceToIR(ledWorkspace('led-a', 'ON'), [makeLed('led-a', null)]);
+    expect(program.loop).toEqual([]);
+    expect(diagnostics.some((d) => d.id === 'component-unpinned:led-a' && d.severity === 'error')).toBe(true);
   });
 });

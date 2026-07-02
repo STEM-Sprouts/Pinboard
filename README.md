@@ -137,8 +137,16 @@ Phase 1 — learning-loop MVP (in progress):
   timer conflicts, analog-read errors, no-loop / no-output hints (`src/hardware/diagnostics.ts`)
 - ✅ CI: typecheck + lint + unit tests, and an arduino-cli job that compiles every canonical
   fixture generated from IR (`.github/workflows/`)
-- ⏳ Next: dynamic component panel (LED/Button/Potentiometer instances), board-aware pin
-  picker, full beginner block library, CodeMirror preview with line↔block mapping, lessons
+- ✅ **Dynamic component system**: add/remove LED, Button, Potentiometer instances; board-aware
+  pin picker (capability + availability + used-by context per pin); component blocks
+  (`turn LED on`, `is pressed?`, `read pot`) that lower through instance config —
+  active-low LEDs emit opposite writes, button pull mode decides the pressed comparison
+- ✅ Component-binding diagnostics: pin conflicts, unconnected components, and the
+  "your program writes D13 but nothing is connected" teaching warning
+- ✅ Starter project ships with hardware pre-added (LED on D13, Button on D2)
+- ✅ First two lessons drafted (content before engine): Blink, Button Controls LED (`src/lessons/content/`)
+- ⏳ Next: variables/logic/math block library, lesson panel + checks, CodeMirror preview
+  with line↔block mapping, buzzer & servo components
 
 ---
 
@@ -147,23 +155,24 @@ Phase 1 — learning-loop MVP (in progress):
 ```
 pinboard/
 ├── src/
-│   ├── blocks/          # v1 Blockly block definitions & C generator
-│   ├── components/      # React UI (workspace, simulation panel, code preview)
-│   ├── emulator/        # v1 avr8js-based emulator (being replaced)
-│   ├── ir/              # Pinboard 2.0: canonical IR types
-│   ├── hardware/        # Pinboard 2.0: board profiles, pin & diagnostic types
-│   ├── runtime/         # Pinboard 2.0: IR interpreter, scheduler, virtual clock
-│   ├── arduino/         # Pinboard 2.0: IR → Arduino C printer + pinMode inference
+│   ├── blocks/          # Blockly block definitions + component-block registry
+│   ├── components/      # React UI (workspace, hardware panel, pin picker, code preview)
+│   ├── editor/          # Blocks→IR lowering, starter project
+│   ├── ir/              # Pinboard 2.0: canonical IR types + walkers
+│   ├── hardware/        # Board profiles, components, diagnostics engine
+│   ├── runtime/         # IR interpreter, scheduler, virtual clock
+│   ├── arduino/         # IR → Arduino C printer + pinMode inference
+│   ├── persistence/     # Project document, LocalStorage store, import/export
+│   ├── lessons/         # Lesson content (plain text first)
 │   └── testing/         # Synthetic clock/frame harness, IR builders, fixtures
 ├── e2e/                 # Playwright end-to-end tests
-├── implemenation_plam/  # Architecture spec, domain docs, ordered build plan
 └── public/
 ```
 
 ### Running the tests
 
 ```bash
-npm test                 # Vitest: runtime tests 1–16 + printer golden tests (headless)
+npm test                 # Vitest: runtime, lowering, diagnostics, persistence
 npx playwright test      # E2E: drives the real app in Chromium
 ```
 

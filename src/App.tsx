@@ -4,50 +4,77 @@ import BlocklyWorkspace from './components/BlocklyWorkspace';
 import SimulationPanel from './components/SimulationPanel';
 import CodePreview from './components/CodePreview';
 import { lowerWorkspaceToIR, type BlocklyWorkspaceJson } from './editor/lowerBlocklyToIR';
-import { starterWorkspaceJson } from './editor/starterProject';
+import { starterComponents, starterWorkspaceJson } from './editor/starterProject';
 import { printArduino } from './arduino/printArduino';
 import { RuntimeScheduler } from './runtime/scheduler';
 import { createBrowserSchedulerDeps } from './runtime/browserDeps';
 import { arduinoUno } from './hardware/boards/arduinoUno';
-import { analyzeProgramDiagnostics } from './hardware/diagnostics';
+import { analyzeComponentDiagnostics, analyzeProgramDiagnostics } from './hardware/diagnostics';
+import {
+  buttonUsesPullup,
+  createComponent,
+  signalPin,
+  type PlaceableComponentType,
+} from './hardware/components';
 import type { PinId } from './hardware/types';
+import { setRegisteredComponents } from './blocks/componentRegistry';
 import { LocalProjectStore } from './persistence/localProjectStore';
-import { createLocalProject, type PinboardProjectDocument } from './persistence/projectDocument';
+import { createLocalProject, type ComponentInstance, type PinboardProjectDocument } from './persistence/projectDocument';
 import { exportFileName, exportProjectJson, importProjectJson } from './persistence/importExport';
 
 const MAX_SERIAL_LINES = 500;
 const AUTOSAVE_DEBOUNCE_MS = 750;
+const DEFAULT_POT_VALUE = 512;
 
 function App() {
   const [store] = useState(() => new LocalProjectStore(window.localStorage));
 
-  // Local-first: restore the last-opened project, else start on Blink —
-  // never a blank canvas (persistence.md §3, lessons.md §3).
+  // Local-first: restore the last-opened project, else start on Blink with
+  // hardware pre-added — never a blank canvas (persistence.md §3, lessons.md §3).
   const [loadedProject, setLoadedProject] = useState<PinboardProjectDocument>(
     () =>
       store.loadLastOpened() ??
-      createLocalProject(crypto.randomUUID(), starterWorkspaceJson, new Date().toISOString()),
+      createLocalProject(
+        crypto.randomUUID(),
+        starterWorkspaceJson,
+        new Date().toISOString(),
+        'My Pinboard Project',
+        starterComponents,
+      ),
   );
   const [workspaceNonce, setWorkspaceNonce] = useState(0);
   const [workspaceJson, setWorkspaceJson] = useState<BlocklyWorkspaceJson>(
     () => loadedProject.workspace.data as BlocklyWorkspaceJson,
   );
+  const [components, setComponents] = useState<ComponentInstance[]>(() => loadedProject.hardware.components);
   const projectRef = useRef(loadedProject);
 
   const [emulatorStatus, setEmulatorStatus] = useState<'idle' | 'compiling' | 'running' | 'error'>('idle');
-  const [pinStates, setPinStates] = useState<Record<number, boolean>>({});
+  const [pinStates, setPinStates] = useState<Record<string, boolean>>({});
+  const [buttonPressed, setButtonPressed] = useState<Record<string, boolean>>({});
+  const [potValues, setPotValues] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string[]>([]);
   const [saveNote, setSaveNote] = useState('');
 
   const schedulerRef = useRef<RuntimeScheduler | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
 
+  // The component-block dropdowns read from this registry lazily.
+  useEffect(() => {
+    setRegisteredComponents(components);
+  }, [components]);
+
   // Blocks → IR → C: the preview and the simulator share this one IR (ADR-0003).
-  const lowered = useMemo(() => lowerWorkspaceToIR(workspaceJson), [workspaceJson]);
+  const lowered = useMemo(() => lowerWorkspaceToIR(workspaceJson, components), [workspaceJson, components]);
   const printed = useMemo(() => printArduino(lowered.program), [lowered]);
   const diagnostics = useMemo(
-    () => [...lowered.diagnostics, ...printed.diagnostics, ...analyzeProgramDiagnostics(lowered.program, arduinoUno)],
-    [lowered, printed],
+    () => [
+      ...lowered.diagnostics,
+      ...printed.diagnostics,
+      ...analyzeProgramDiagnostics(lowered.program, arduinoUno),
+      ...analyzeComponentDiagnostics(lowered.program, components),
+    ],
+    [lowered, printed, components],
   );
 
   const detachRuntimeListeners = () => {
@@ -59,9 +86,10 @@ function App() {
     return {
       ...projectRef.current,
       workspace: { format: 'blockly-json', data: workspaceJson },
+      hardware: { components, wiring: [] },
       metadata: { ...projectRef.current.metadata, updatedAt: new Date().toISOString() },
     };
-  }, [workspaceJson]);
+  }, [workspaceJson, components]);
 
   // Debounced autosave; a failure warns and points to export, never crashes.
   useEffect(() => {
@@ -83,11 +111,22 @@ function App() {
     const scheduler = new RuntimeScheduler(createBrowserSchedulerDeps(), { board: arduinoUno });
     schedulerRef.current = scheduler;
 
+    // Seed inputs from the current panel state before the program starts.
+    for (const instance of components) {
+      const pin = signalPin(instance);
+      if (!pin) continue;
+      if (instance.type === 'potentiometer') {
+        scheduler.ctx.pins.setExternalAnalog(pin, potValues[instance.id] ?? DEFAULT_POT_VALUE);
+      }
+      if (instance.type === 'button' && buttonPressed[instance.id]) {
+        scheduler.ctx.pins.setExternalDigital(pin, buttonUsesPullup(instance) ? false : true);
+      }
+    }
+
     unsubscribersRef.current.push(
       scheduler.ctx.pins.onChange((event) => {
-        if (event.kind !== 'digital' || !event.pin.startsWith('D')) return;
-        const pinNumber = Number(event.pin.slice(1));
-        setPinStates((prev) => ({ ...prev, [pinNumber]: event.value as boolean }));
+        if (event.kind !== 'digital') return;
+        setPinStates((prev) => ({ ...prev, [event.pin]: event.value as boolean }));
       }),
       scheduler.ctx.serial.onLine((line) => {
         setSerialOutput((prev) => {
@@ -101,7 +140,7 @@ function App() {
     void scheduler.run(lowered.program).then(() => {
       if (schedulerRef.current === scheduler) setEmulatorStatus('idle');
     });
-  }, [lowered]);
+  }, [lowered, components, potValues, buttonPressed]);
 
   const handleStop = useCallback(() => {
     schedulerRef.current?.stop();
@@ -119,12 +158,41 @@ function App() {
     setSerialOutput([]);
   }, []);
 
-  const handleButtonPress = useCallback((pin: number, pressed: boolean) => {
-    setPinStates((prev) => ({ ...prev, [pin]: pressed }));
-    // The virtual button drives the pin electrically: with INPUT_PULLUP the
-    // line idles HIGH and pressing pulls it LOW (real Arduino semantics).
-    schedulerRef.current?.ctx.pins.setExternalDigital(`D${pin}` as PinId, pressed ? false : undefined);
+  // --- hardware panel ---
+
+  const handleAddComponent = useCallback((type: PlaceableComponentType) => {
+    setComponents((prev) => [...prev, createComponent(type, crypto.randomUUID(), prev, arduinoUno)]);
   }, []);
+
+  const handleRemoveComponent = useCallback((id: string) => {
+    setComponents((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const handleSetComponentPin = useCallback((id: string, pin: PinId | null) => {
+    setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, pins: { ...c.pins, signal: pin } } : c)));
+  }, []);
+
+  const handleSetLedActiveHigh = useCallback((id: string, activeHigh: boolean) => {
+    setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, config: { ...c.config, activeHigh } } : c)));
+  }, []);
+
+  const handleButtonPress = useCallback((instance: ComponentInstance, pressed: boolean) => {
+    setButtonPressed((prev) => ({ ...prev, [instance.id]: pressed }));
+    const pin = signalPin(instance);
+    if (!pin) return;
+    // The virtual button drives the pin electrically: with a pull-up the
+    // line idles HIGH and pressing pulls it LOW (real Arduino semantics).
+    const pressedLevel = buttonUsesPullup(instance) ? false : true;
+    schedulerRef.current?.ctx.pins.setExternalDigital(pin, pressed ? pressedLevel : undefined);
+  }, []);
+
+  const handlePotChange = useCallback((instance: ComponentInstance, value: number) => {
+    setPotValues((prev) => ({ ...prev, [instance.id]: value }));
+    const pin = signalPin(instance);
+    if (pin) schedulerRef.current?.ctx.pins.setExternalAnalog(pin, value);
+  }, []);
+
+  // --- project I/O ---
 
   const handleWorkspaceChange = useCallback((json: BlocklyWorkspaceJson) => {
     setWorkspaceJson(json);
@@ -152,6 +220,9 @@ function App() {
       projectRef.current = result.document;
       setLoadedProject(result.document);
       setWorkspaceJson(result.document.workspace.data as BlocklyWorkspaceJson);
+      setComponents(result.document.hardware.components);
+      setButtonPressed({});
+      setPotValues({});
       setWorkspaceNonce((nonce) => nonce + 1);
       setSaveNote('Project imported');
     });
@@ -185,12 +256,21 @@ function App() {
           />
         </div>
 
-        <div className="w-[320px] flex-shrink-0 bg-surface flex flex-col border-r border-gray-200 overflow-y-auto">
+        <div className="w-[340px] flex-shrink-0 bg-surface flex flex-col border-r border-gray-200 overflow-y-auto">
           <SimulationPanel
+            board={arduinoUno}
+            components={components}
             pinStates={pinStates}
+            buttonPressed={buttonPressed}
+            potValues={potValues}
             serialOutput={serialOutput}
             diagnostics={diagnostics}
+            onAddComponent={handleAddComponent}
+            onRemoveComponent={handleRemoveComponent}
+            onSetComponentPin={handleSetComponentPin}
+            onSetLedActiveHigh={handleSetLedActiveHigh}
             onButtonPress={handleButtonPress}
+            onPotChange={handlePotChange}
           />
         </div>
       </div>

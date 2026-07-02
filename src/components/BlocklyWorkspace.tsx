@@ -22,6 +22,16 @@ const TOOLBOX_CONFIG = {
     },
     {
       kind: 'category',
+      name: 'Components',
+      colour: '#9966FF',
+      contents: [
+        { kind: 'block', type: 'led_set' },
+        { kind: 'block', type: 'button_is_pressed' },
+        { kind: 'block', type: 'pot_read' }
+      ]
+    },
+    {
+      kind: 'category',
       name: 'Pins',
       colour: '#4C97FF',
       contents: [
