@@ -13,7 +13,8 @@ export type LessonCheck =
   | { kind: 'componentOnPin'; componentType: ComponentInstance['type']; pinRole: string; expectedPin: PinId }
   | { kind: 'hasInstruction'; statementKind: StatementIR['kind']; pin?: PinId }
   | { kind: 'serialIncludes'; text: string }
-  | { kind: 'runtimePinToggles'; pin: PinId };
+  | { kind: 'runtimePinToggles'; pin: PinId }
+  | { kind: 'runtimePinWritesPwm'; pin: PinId };
 
 export type LessonCheckDef = {
   id: string;

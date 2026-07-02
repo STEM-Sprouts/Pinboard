@@ -65,6 +65,58 @@ export const lessons: Lesson[] = [
     ],
   },
   {
+    id: 'change-blink-speed',
+    title: 'Change Blink Speed',
+    estimatedMinutes: 10,
+    targetGradeBand: 'mixed',
+    steps: [
+      {
+        id: 'count',
+        title: 'Count the blinks',
+        instructions:
+          'Run the starter program and count blinks for five seconds. Each delay is 500 ms, so one full blink takes a second.',
+        hints: [],
+      },
+      {
+        id: 'both',
+        title: 'Change both delays',
+        instructions: 'Change BOTH delay blocks to 100 and run again. The preview shows delay(100); — the number you typed.',
+        hints: ['delay() pauses the whole program — while it waits, nothing else happens.'],
+      },
+      {
+        id: 'uneven',
+        title: 'Make it uneven',
+        instructions:
+          'Change only the FIRST delay to 900 and run. The LED stays on much longer than it stays off — on-time and off-time are two different numbers.',
+        hints: ['Try a heartbeat: 100 ms on, 900 ms off.'],
+      },
+      {
+        id: 'shortcut',
+        title: 'One block instead of four',
+        instructions:
+          'Delete the four blocks and drag one "blink LED every 250 ms" block from Components into the loop. The preview becomes the same four lines you deleted.',
+        hints: ['Blocks are shortcuts for code, never magic — the C is always the truth.'],
+      },
+    ],
+    checks: [
+      {
+        id: 'led-on-d13',
+        description: 'The LED is connected to D13',
+        check: { kind: 'componentOnPin', componentType: 'led', pinRole: 'signal', expectedPin: 'D13' },
+      },
+      {
+        id: 'uses-delay',
+        description: 'Your program waits between changes',
+        check: { kind: 'hasInstruction', statementKind: 'delay' },
+      },
+      {
+        id: 'really-blinks',
+        description: 'The LED really blinks when the program runs',
+        check: { kind: 'runtimePinToggles', pin: 'D13' },
+      },
+    ],
+  },
+  {
     id: 'button-controls-led',
     title: 'Button Controls LED',
     estimatedMinutes: 20,
@@ -113,6 +165,70 @@ export const lessons: Lesson[] = [
         id: 'controls-led',
         description: 'Your program controls pin 13',
         check: { kind: 'hasInstruction', statementKind: 'digitalWrite', pin: 'D13' },
+      },
+    ],
+  },
+  {
+    id: 'potentiometer-brightness',
+    title: 'Potentiometer Controls Brightness',
+    estimatedMinutes: 25,
+    targetGradeBand: 'mixed',
+    steps: [
+      {
+        id: 'add-pot',
+        title: 'Add a potentiometer',
+        instructions:
+          'In the hardware panel, add a Potentiometer and connect it to A0. Analog pins measure a range — the knob reads 0 to 1023.',
+        hints: [],
+      },
+      {
+        id: 'pwm-pin',
+        title: 'Move the LED to a PWM pin',
+        instructions:
+          'Move the LED from D13 to D9. The pin picker marks D9 as PWM — only PWM pins can fake in-between voltages by switching very fast.',
+        hints: [
+          'Leave the LED on D13 on purpose first and read the warning — D13 cannot do brightness, only on/off.',
+        ],
+      },
+      {
+        id: 'wire-blocks',
+        title: 'Map knob to brightness',
+        instructions:
+          'Clear the loop. Drag "set LED brightness to" into the loop and drop "map POT to 0 – 255" into its slot.',
+        hints: ['The preview shows one line: analogWrite(9, map(analogRead(A0), 0, 1023, 0, 255));'],
+      },
+      {
+        id: 'turn',
+        title: 'Turn the knob',
+        instructions: 'Run, then drag the potentiometer slider. The LED dims and brightens with the knob.',
+        hints: ['Print the knob value to serial and watch the numbers move as you turn it.'],
+      },
+    ],
+    checks: [
+      {
+        id: 'pot-exists',
+        description: 'A Potentiometer is in the hardware panel',
+        check: { kind: 'hasComponent', componentType: 'potentiometer' },
+      },
+      {
+        id: 'pot-on-a0',
+        description: 'The Potentiometer is connected to A0',
+        check: { kind: 'componentOnPin', componentType: 'potentiometer', pinRole: 'signal', expectedPin: 'A0' },
+      },
+      {
+        id: 'led-on-d9',
+        description: 'The LED is connected to PWM pin D9',
+        check: { kind: 'componentOnPin', componentType: 'led', pinRole: 'signal', expectedPin: 'D9' },
+      },
+      {
+        id: 'writes-brightness',
+        description: 'Your program writes a brightness to D9',
+        check: { kind: 'hasInstruction', statementKind: 'analogWrite', pin: 'D9' },
+      },
+      {
+        id: 'really-dims',
+        description: 'The program really writes PWM when it runs',
+        check: { kind: 'runtimePinWritesPwm', pin: 'D9' },
       },
     ],
   },

@@ -108,3 +108,30 @@ describe('lesson data', () => {
     }
   });
 });
+
+describe('runtimePinWritesPwm', () => {
+  it('passes when the program really writes PWM to the pin, fails otherwise', async () => {
+    const pwmWorkspace: BlocklyWorkspaceJson = {
+      blocks: {
+        languageVersion: 0,
+        blocks: [
+          {
+            type: 'arduino_loop',
+            inputs: {
+              DO: {
+                block: {
+                  type: 'set_pwm',
+                  fields: { PIN: 9 },
+                  inputs: { VALUE: { block: { type: 'num_value', fields: { NUM: 128 } } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const ctx = contextFor(pwmWorkspace);
+    expect(await evaluateCheck({ kind: 'runtimePinWritesPwm', pin: 'D9' }, ctx)).toBe(true);
+    expect(await evaluateCheck({ kind: 'runtimePinWritesPwm', pin: 'D3' }, ctx)).toBe(false);
+  });
+});

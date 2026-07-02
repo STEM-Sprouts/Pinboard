@@ -56,6 +56,11 @@ export async function evaluateCheck(check: LessonCheck, ctx: CheckContext): Prom
         .map((event) => event.value);
       return new Set(values).size >= 2;
     }
+
+    case 'runtimePinWritesPwm': {
+      const run = await runHeadless(ctx.program, { maxFrames: TRACE_FRAMES });
+      return run.pinEvents.some((event) => event.pin === check.pin && event.kind === 'pwm');
+    }
   }
 }
 
