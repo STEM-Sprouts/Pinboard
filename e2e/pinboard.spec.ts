@@ -263,6 +263,21 @@ test.describe('components', () => {
   });
 });
 
+test.describe('lessons', () => {
+  test('the Blink lesson checks pass against the starter project', async ({ page }) => {
+    await page.getByTestId('lessons-toggle').click();
+    await expect(page.getByTestId('lesson-panel')).toBeVisible();
+    await page.getByTestId('lesson-item-blink-led').click();
+    await page.getByTestId('check-work').click();
+    // "really-blinks" runs the program headless on the synthetic clock.
+    for (const id of ['led-exists', 'led-on-d13', 'writes-d13', 'uses-delay', 'really-blinks']) {
+      await expect(page.getByTestId(`check-${id}`)).toHaveAttribute('data-passed', 'true', { timeout: 20_000 });
+    }
+    // Progress persists into the project document.
+    await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
+  });
+});
+
 test.describe('persistence', () => {
   test('autosaves the project locally and restores it after reload', async ({ page }) => {
     await expect(page.getByTestId('save-note')).toHaveText('Saved locally');

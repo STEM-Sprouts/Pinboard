@@ -145,8 +145,12 @@ Phase 1 — learning-loop MVP (in progress):
   "your program writes D13 but nothing is connected" teaching warning
 - ✅ Starter project ships with hardware pre-added (LED on D13, Button on D2)
 - ✅ First two lessons drafted (content before engine): Blink, Button Controls LED (`src/lessons/content/`)
-- ⏳ Next: variables/logic/math block library, lesson panel + checks, CodeMirror preview
-  with line↔block mapping, buzzer & servo components
+- ✅ **Lesson panel + checks**: pick a lesson, follow steps, press "Check my work" —
+  checks inspect the project document, the IR, and a headless simulation trace
+  ("the LED really blinks"), never the generated code text; progress persists
+  into the project document (`src/lessons/`)
+- ⏳ Next: variables/logic/math block library, CodeMirror preview with line↔block
+  mapping, buzzer & servo components
 
 ---
 

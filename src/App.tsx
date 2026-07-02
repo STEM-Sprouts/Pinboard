@@ -21,6 +21,9 @@ import { setRegisteredComponents } from './blocks/componentRegistry';
 import { LocalProjectStore } from './persistence/localProjectStore';
 import { createLocalProject, type ComponentInstance, type PinboardProjectDocument } from './persistence/projectDocument';
 import { exportFileName, exportProjectJson, importProjectJson } from './persistence/importExport';
+import LessonPanel from './components/LessonPanel';
+import { lessons } from './lessons/lessons';
+import { evaluateAllChecks } from './lessons/checks';
 
 const MAX_SERIAL_LINES = 500;
 const AUTOSAVE_DEBOUNCE_MS = 750;
@@ -55,6 +58,12 @@ function App() {
   const [potValues, setPotValues] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string[]>([]);
   const [saveNote, setSaveNote] = useState('');
+  const [lessonOpen, setLessonOpen] = useState(false);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(
+    () => loadedProject.lessons?.lessonId ?? null,
+  );
+  const [checkResults, setCheckResults] = useState<Record<string, boolean>>({});
+  const [checking, setChecking] = useState(false);
 
   const schedulerRef = useRef<RuntimeScheduler | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
@@ -87,9 +96,15 @@ function App() {
       ...projectRef.current,
       workspace: { format: 'blockly-json', data: workspaceJson },
       hardware: { components, wiring: [] },
+      lessons: {
+        lessonId: activeLessonId ?? undefined,
+        completedChecks: Object.entries(checkResults)
+          .filter(([, passed]) => passed)
+          .map(([id]) => id),
+      },
       metadata: { ...projectRef.current.metadata, updatedAt: new Date().toISOString() },
     };
-  }, [workspaceJson, components]);
+  }, [workspaceJson, components, activeLessonId, checkResults]);
 
   // Debounced autosave; a failure warns and points to export, never crashes.
   useEffect(() => {
@@ -192,6 +207,22 @@ function App() {
     if (pin) schedulerRef.current?.ctx.pins.setExternalAnalog(pin, value);
   }, []);
 
+  // --- lessons ---
+
+  const handleSelectLesson = useCallback((id: string | null) => {
+    setActiveLessonId(id);
+    setCheckResults({});
+  }, []);
+
+  const handleCheckWork = useCallback(() => {
+    const active = lessons.find((lesson) => lesson.id === activeLessonId);
+    if (!active) return;
+    setChecking(true);
+    void evaluateAllChecks(active.checks, { document: currentDocument(), program: lowered.program })
+      .then(setCheckResults)
+      .finally(() => setChecking(false));
+  }, [activeLessonId, currentDocument, lowered]);
+
   // --- project I/O ---
 
   const handleWorkspaceChange = useCallback((json: BlocklyWorkspaceJson) => {
@@ -223,6 +254,8 @@ function App() {
       setComponents(result.document.hardware.components);
       setButtonPressed({});
       setPotValues({});
+      setActiveLessonId(result.document.lessons?.lessonId ?? null);
+      setCheckResults({});
       setWorkspaceNonce((nonce) => nonce + 1);
       setSaveNote('Project imported');
     });
@@ -245,6 +278,7 @@ function App() {
         onReset={handleReset}
         onExport={handleExport}
         onImportFile={handleImportFile}
+        onToggleLessons={() => setLessonOpen((open) => !open)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -254,6 +288,19 @@ function App() {
             initialWorkspace={loadedProject.workspace.data as BlocklyWorkspaceJson}
             onWorkspaceChange={handleWorkspaceChange}
           />
+          {lessonOpen && (
+            <div className="absolute left-0 top-0 bottom-0 w-80 z-20 border-r border-gray-200 shadow-lg">
+              <LessonPanel
+                lessons={lessons}
+                activeLessonId={activeLessonId}
+                checkResults={checkResults}
+                checking={checking}
+                onSelectLesson={handleSelectLesson}
+                onCheckWork={handleCheckWork}
+                onClose={() => setLessonOpen(false)}
+              />
+            </div>
+          )}
         </div>
 
         <div className="w-[340px] flex-shrink-0 bg-surface flex flex-col border-r border-gray-200 overflow-y-auto">

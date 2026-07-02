@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Play, Square, RotateCcw, Download, Upload } from 'lucide-react';
+import { Play, Square, RotateCcw, Download, Upload, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
   status: 'idle' | 'compiling' | 'running' | 'error';
@@ -9,9 +9,10 @@ interface HeaderProps {
   onReset: () => void;
   onExport: () => void;
   onImportFile: (file: File) => void;
+  onToggleLessons: () => void;
 }
 
-export default function Header({ status, saveNote, onRun, onStop, onReset, onExport, onImportFile }: HeaderProps) {
+export default function Header({ status, saveNote, onRun, onStop, onReset, onExport, onImportFile, onToggleLessons }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -21,6 +22,13 @@ export default function Header({ status, saveNote, onRun, onStop, onReset, onExp
           <span className="text-white font-bold text-lg">P</span>
         </div>
         <h1 className="text-xl font-bold text-gray-800">Pinboard</h1>
+        <button
+          data-testid="lessons-toggle"
+          onClick={onToggleLessons}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium ml-2"
+        >
+          <BookOpen size={15} /> Lessons
+        </button>
         <span data-testid="save-note" className="text-xs text-gray-500 ml-2">{saveNote}</span>
       </div>
 
