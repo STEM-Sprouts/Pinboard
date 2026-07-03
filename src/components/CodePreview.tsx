@@ -38,7 +38,15 @@ const blockHighlightTheme = EditorView.baseTheme({
   '.cm-block-highlight': { backgroundColor: 'rgba(255, 213, 79, 0.35)' },
 });
 
-export default function CodePreview({ code, highlight }: { code: string; highlight?: LineRange | null }) {
+export default function CodePreview({
+  code,
+  highlight,
+  fontSize = 'medium',
+}: {
+  code: string;
+  highlight?: LineRange | null;
+  fontSize?: 'small' | 'medium' | 'large';
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -88,7 +96,14 @@ export default function CodePreview({ code, highlight }: { code: string; highlig
         <span>Arduino C Preview</span>
         <span className="text-xs font-normal text-gray-600">read-only — generated from your blocks</span>
       </div>
-      <div ref={hostRef} data-testid="code-preview" tabIndex={0} className="flex-1 overflow-auto bg-surface text-sm" />
+      <div
+        ref={hostRef}
+        data-testid="code-preview"
+        tabIndex={0}
+        className={`flex-1 overflow-auto bg-surface ${
+          fontSize === 'small' ? 'text-xs' : fontSize === 'large' ? 'text-base' : 'text-sm'
+        }`}
+      />
     </div>
   );
 }

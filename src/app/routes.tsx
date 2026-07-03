@@ -11,6 +11,7 @@ import { LocalProjectStore } from '../persistence/localProjectStore';
 import type { PinboardProjectDocument } from '../persistence/projectDocument';
 import { getSupabase } from '../supabase/client';
 import { loadCloudProjects, supabaseProjectPort, type CloudProject } from '../supabase/projectRepository';
+export { EditorAccountPage, EditorBuildPage, EditorLessonsPage, EditorPreferencesPage } from '../App';
 
 /** /editor/new → a fresh local project id; the editor creates the starter. */
 export function NewProjectRedirect() {
@@ -117,25 +118,33 @@ export function AuthCallbackPage() {
   useEffect(() => {
     const client = getSupabase();
     if (!client) {
-      navigate('/', { replace: true });
+      navigate('/editor/new', { replace: true });
       return;
     }
-    void client.auth.getSession().finally(() => navigate('/', { replace: true }));
+    void client.auth.getSession().finally(() => navigate('/editor/new', { replace: true }));
   }, [navigate]);
   return <p className="p-8 text-sm text-gray-500">Finishing sign-in…</p>;
 }
 
 export function SettingsPage() {
   return (
-    <div className="max-w-2xl mx-auto p-8">
+    <div className="max-w-3xl mx-auto p-8">
       <h1 className="text-2xl font-bold text-ink mb-2">Settings</h1>
-      <p className="text-sm text-gray-500">
-        Account settings arrive with cloud save. Everything else lives in the editor —{' '}
-        <Link to="/" className="text-accent underline">
-          back to building
-        </Link>
-        .
+      <p className="text-sm text-gray-600">
+        The editor now splits identity and local behavior into separate tabs. Use Account for sign-in and cloud
+        projects, or Preferences for browser-only defaults.
       </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link to="/editor/new/account" className="ss-btn ss-btn-primary px-4 py-2 text-sm">
+          Open Account
+        </Link>
+        <Link to="/editor/new/preferences" className="ss-btn ss-btn-ghost px-4 py-2 text-sm">
+          Open Preferences
+        </Link>
+        <Link to="/" className="ss-btn ss-btn-ghost px-4 py-2 text-sm">
+          Back to building
+        </Link>
+      </div>
     </div>
   );
 }
