@@ -19,6 +19,7 @@ export const lessons: Lesson[] = [
         instructions:
           'The loop block runs its blocks over and over, forever — exactly like a real Arduino. Find the four blocks inside: on, wait, off, wait.',
         hints: ['The code preview at the bottom shows the real Arduino C your blocks become.'],
+        locate: 'loop',
       },
       {
         id: 'run',
@@ -26,6 +27,7 @@ export const lessons: Lesson[] = [
         instructions:
           'The LED in the hardware panel blinks. In the code preview, find digitalWrite(13, HIGH); — that is the line your "on" block became.',
         hints: ['If nothing blinks, check that the LED is connected to pin D13 in the hardware panel.'],
+        locate: 'set pin 13 to HIGH',
       },
       {
         id: 'faster',
@@ -34,6 +36,7 @@ export const lessons: Lesson[] = [
         hints: [
           'Changing only one delay makes the LED stay on longer than off — try it on purpose and watch closely.',
         ],
+        locate: 'delay',
       },
     ],
     checks: [
@@ -76,12 +79,14 @@ export const lessons: Lesson[] = [
         instructions:
           'Run the starter program and count blinks for five seconds. Each delay is 500 ms, so one full blink takes a second.',
         hints: [],
+        locate: 'delay',
       },
       {
         id: 'both',
         title: 'Change both delays',
         instructions: 'Change BOTH delay blocks to 100 and run again. The preview shows delay(100); — the number you typed.',
         hints: ['delay() pauses the whole program — while it waits, nothing else happens.'],
+        locate: 'delay',
       },
       {
         id: 'uneven',
@@ -96,6 +101,7 @@ export const lessons: Lesson[] = [
         instructions:
           'Delete the four blocks and drag one "blink LED every 250 ms" block from Components into the loop. The preview becomes the same four lines you deleted.',
         hints: ['Blocks are shortcuts for code, never magic — the C is always the truth.'],
+        locate: 'blink',
       },
     ],
     checks: [
@@ -127,6 +133,7 @@ export const lessons: Lesson[] = [
         title: 'Clear the loop',
         instructions: 'Remove the blink blocks from loop (drag them to the trash), keeping the loop block itself.',
         hints: [],
+        locate: 'loop',
       },
       {
         id: 'ask',
@@ -134,6 +141,7 @@ export const lessons: Lesson[] = [
         instructions:
           'From Logic, drag an "if … do" block into loop. From Components, put "Button 1 is pressed?" into the if slot and "turn LED 1 on" into the do slot.',
         hints: ['Add a "delay 20 ms" block after the if — real programs check the button many times per second.'],
+        locate: 'if',
       },
       {
         id: 'surprise',
@@ -180,6 +188,7 @@ export const lessons: Lesson[] = [
         instructions:
           'In the hardware panel, add a Potentiometer and connect it to A0. Analog pins measure a range — the knob reads 0 to 1023.',
         hints: [],
+        locate: 'potentiometer',
       },
       {
         id: 'pwm-pin',
@@ -189,6 +198,7 @@ export const lessons: Lesson[] = [
         hints: [
           'Leave the LED on D13 on purpose first and read the warning — D13 cannot do brightness, only on/off.',
         ],
+        locate: 'turn LED 1 on',
       },
       {
         id: 'wire-blocks',
@@ -244,6 +254,7 @@ export const lessons: Lesson[] = [
         instructions:
           'Run the starter blink and hold the virtual button. Nothing can respond — during delay(500) the Arduino is frozen, on purpose. This lesson fixes that.',
         hints: [],
+        locate: 'delay',
       },
       {
         id: 'level-up',
@@ -257,6 +268,7 @@ export const lessons: Lesson[] = [
         title: 'Give the program memory',
         instructions: 'Create two variables: lastFlip and ledOn. They live above setup() as globals — check the preview.',
         hints: ['Variables keep their value between loop() passes because they are globals.'],
+        locate: 'variables',
       },
       {
         id: 'clockwatch',
@@ -266,6 +278,7 @@ export const lessons: Lesson[] = [
         hints: [
           'Forgot to set lastFlip inside the if? The condition stays true and the LED flickers every pass — watch for it.',
         ],
+        locate: 'millis',
       },
       {
         id: 'prove',
@@ -304,6 +317,7 @@ export const lessons: Lesson[] = [
         instructions:
           'Add a Servo in the hardware panel — it defaults to D9. Servos are told an angle, not a brightness, so they do not need a PWM pin.',
         hints: [],
+        locate: 'servo',
       },
       {
         id: 'for-loop',
@@ -311,6 +325,7 @@ export const lessons: Lesson[] = [
         instructions:
           'Switch to Intermediate mode. From Control, build: for angle from 0 to 180 by 30 → set Servo 1 angle to angle, wait 200 ms.',
         hints: ['No wait inside the loop? The sweep finishes faster than the eye can follow.'],
+        locate: 'for',
       },
       {
         id: 'free-code',
@@ -318,12 +333,14 @@ export const lessons: Lesson[] = [
         instructions:
           'Read the preview: #include <Servo.h> and servo1.attach(9) appeared in setup() by themselves — the code a servo always needs.',
         hints: [],
+        locate: 'servo',
       },
       {
         id: 'run',
         title: 'Run the sweep',
         instructions: 'Run. The arm steps 0, 30, 60 … 180, then repeats because loop() runs the for-loop again.',
         hints: ['Extension: sweep back down with a second for-loop from 180 to 0 by -30.'],
+        locate: 'for',
       },
     ],
     checks: [
@@ -361,12 +378,14 @@ export const lessons: Lesson[] = [
         instructions:
           'Add a Buzzer — it defaults to D8, away from pins where tone() can fight the PWM timer (D3/D11 — move it there later and read the warning).',
         hints: [],
+        locate: 'buzzer',
       },
       {
         id: 'siren',
         title: 'Build the siren',
         instructions: 'In loop: play Buzzer 1 at 880 Hz → wait 300 ms → play at 440 Hz → wait 300 ms.',
         hints: ['A tone with no wait after it gets replaced instantly — you would hear only the last one.'],
+        locate: 'tone',
       },
       {
         id: 'sound-is-state',
@@ -374,6 +393,7 @@ export const lessons: Lesson[] = [
         instructions:
           'Read the preview: tone(8, 880); keeps sounding until you change or stop it. The waits set the rhythm, not the sound.',
         hints: ['Add "stop Buzzer 1" and a wait to put silence in the pattern.'],
+        locate: 'tone',
       },
     ],
     checks: [

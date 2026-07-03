@@ -29,6 +29,15 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+
+  html[data-pinboard-reduced-motion='true'] *,
+  html[data-pinboard-reduced-motion='true'] *::before,
+  html[data-pinboard-reduced-motion='true'] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer components {

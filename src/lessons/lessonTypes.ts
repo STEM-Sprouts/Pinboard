@@ -30,6 +30,7 @@ export type LessonStep = {
   title: string;
   instructions: string;
   hints: string[];
+  locate?: string;
 };
 
 export type Lesson = {

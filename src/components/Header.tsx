@@ -1,14 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import type { EditorMode } from '../persistence/projectDocument';
 import pinboardLogo from '../../pinboard_logo.png';
 
 interface HeaderProps {
   editorBasePath: string;
-  editorMode: EditorMode;
-  onEditorModeChange: (mode: EditorMode) => void;
+  onInfoClick: () => void;
 }
 
-export default function Header({ editorBasePath, editorMode, onEditorModeChange }: HeaderProps) {
+export default function Header({ editorBasePath, onInfoClick }: HeaderProps) {
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     [
       'px-3 py-2 text-sm font-semibold border-b-2 transition-colors',
@@ -43,18 +41,13 @@ export default function Header({ editorBasePath, editorMode, onEditorModeChange 
         </NavLink>
       </nav>
 
-      <select
-        data-testid="editor-mode"
-        aria-label="Editor mode"
-        value={editorMode}
-        onChange={(e) => onEditorModeChange(e.target.value as EditorMode)}
-        className="px-2 py-1.5 bg-surface border-2 border-ink rounded-xl text-sm font-semibold text-ink shadow-[2px_2px_0_#111]"
-        title="Editor mode — changes which blocks the toolbox offers"
+      <button
+        onClick={onInfoClick}
+        className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm"
+        aria-label="Open info"
       >
-        <option value="beginner">Beginner</option>
-        <option value="intermediate">Intermediate</option>
-        <option value="advanced">Advanced</option>
-      </select>
+        Info
+      </button>
     </header>
   );
 }

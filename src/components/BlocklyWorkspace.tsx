@@ -18,6 +18,8 @@ interface BlocklyWorkspaceProps {
   onWorkspaceChange: (json: BlocklyWorkspaceJson) => void;
   /** Fires with the selected block id (null on deselect); keep the reference stable. */
   onSelectionChange?: (blockId: string | null) => void;
+  /** Exposes a locate helper to the parent so lessons can jump to blocks. */
+  onWorkspaceReady?: (api: { locateBlock: (query: string) => boolean }) => void;
 }
 
 export default function BlocklyWorkspace({
@@ -25,6 +27,7 @@ export default function BlocklyWorkspace({
   toolbox,
   onWorkspaceChange,
   onSelectionChange,
+  onWorkspaceReady,
 }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -40,6 +43,21 @@ export default function BlocklyWorkspace({
       move: { scrollbars: true, drag: true, wheel: true }
     });
     workspaceRef.current = workspace;
+    onWorkspaceReady?.({
+      locateBlock: (query: string) => {
+        const normalizedQuery = query.trim().toLowerCase();
+        if (!normalizedQuery) return false;
+        const blocks = workspace.getAllBlocks(false);
+        const match = blocks.find((block) => {
+          const text = block.toString().toLowerCase();
+          return text.includes(normalizedQuery) || block.type.toLowerCase().includes(normalizedQuery);
+        });
+        if (!match) return false;
+        match.select();
+        workspace.centerOnBlock(match.id);
+        return true;
+      },
+    });
 
     try {
       Blockly.serialization.workspaces.load(initialWorkspace as object, workspace);
@@ -77,8 +95,9 @@ export default function BlocklyWorkspace({
       observer.disconnect();
       workspace.dispose();
       workspaceRef.current = null;
+      onWorkspaceReady?.({ locateBlock: () => false });
     };
-  }, [initialWorkspace, onWorkspaceChange, onSelectionChange]);
+  }, [initialWorkspace, onWorkspaceChange, onSelectionChange, onWorkspaceReady]);
 
   // Editor mode changes swap the toolbox in place; the workspace and its
   // loaded blocks are never reloaded or mutated (persistence.md §2).

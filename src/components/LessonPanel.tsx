@@ -4,7 +4,7 @@
  * asked. The last stage is "Check my work", which runs the real checks
  * against the project state and a headless simulation, never code text.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Lightbulb } from 'lucide-react';
 import type { Lesson } from '../lessons/lessonTypes';
 
@@ -13,8 +13,11 @@ interface LessonPanelProps {
   activeLessonId: string | null;
   checkResults: Record<string, boolean>;
   checking: boolean;
+  locateMessage: string | null;
+  showHintsAutomatically: boolean;
   onSelectLesson: (id: string | null) => void;
   onCheckWork: () => void;
+  onLocateBlock: (query: string) => void;
   onClose?: () => void;
 }
 
@@ -52,6 +55,11 @@ export default function LessonPanel(props: LessonPanelProps) {
       </div>
 
       <div className="p-4 md:p-5 flex-1 overflow-y-auto">
+        {props.locateMessage && (
+          <div className="mb-4 rounded-2xl border-2 border-ink bg-primary/20 px-4 py-3 text-sm font-medium text-ink shadow-[3px_3px_0_#111]">
+            {props.locateMessage}
+          </div>
+        )}
         {!active ? (
           <LessonList lessons={props.lessons} onSelectLesson={props.onSelectLesson} />
         ) : (
@@ -61,7 +69,9 @@ export default function LessonPanel(props: LessonPanelProps) {
             lesson={active}
             checkResults={props.checkResults}
             checking={props.checking}
+            showHintsAutomatically={props.showHintsAutomatically}
             onCheckWork={props.onCheckWork}
+            onLocateBlock={props.onLocateBlock}
           />
         )}
       </div>
@@ -122,12 +132,16 @@ function LessonSteps({
   lesson,
   checkResults,
   checking,
+  showHintsAutomatically,
   onCheckWork,
+  onLocateBlock,
 }: {
   lesson: Lesson;
   checkResults: Record<string, boolean>;
   checking: boolean;
+  showHintsAutomatically: boolean;
   onCheckWork: () => void;
+  onLocateBlock: (query: string) => void;
 }) {
   // Stages: one per step, plus the final "Check my work" stage.
   const totalStages = lesson.steps.length + 1;
@@ -135,6 +149,10 @@ function LessonSteps({
   const [hintIndex, setHintIndex] = useState(0);
   const onCheckStage = stage === lesson.steps.length;
   const step = onCheckStage ? null : lesson.steps[stage];
+
+  useEffect(() => {
+    if (showHintsAutomatically && step?.hints.length) setHintIndex(step.hints.length);
+  }, [showHintsAutomatically, step?.id]);
 
   const passedCount = lesson.checks.filter((c) => checkResults[c.id]).length;
   const allPassed = passedCount === lesson.checks.length && lesson.checks.length > 0;
@@ -168,9 +186,15 @@ function LessonSteps({
         <div className="ss-card bg-white p-5 md:p-6" data-testid={`lesson-step-${step.id}`}>
           <div className="flex items-start justify-between gap-4">
             <h3 className="text-lg font-bold text-ink">{step.title}</h3>
-            <span className="rounded-full border-2 border-ink bg-primary px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-ink">
-              Step
-            </span>
+            {step.locate && (
+              <button
+                data-testid={`lesson-locate-${step.id}`}
+                onClick={() => onLocateBlock(step.locate!)}
+                className="ss-btn ss-btn-ghost px-3 py-1.5 text-[11px]"
+              >
+                Locate block
+              </button>
+            )}
           </div>
           <p className="mt-3 text-sm text-gray-700 leading-relaxed">{step.instructions}</p>
 

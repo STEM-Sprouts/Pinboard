@@ -18,6 +18,7 @@ import CodePreview from './components/CodePreview';
 import Header from './components/Header';
 import LessonPanel from './components/LessonPanel';
 import ConflictDialog from './components/ConflictDialog';
+import InfoDialog from './components/InfoDialog';
 import pinboardLogo from '../pinboard_logo.png';
 import { lowerWorkspaceToIR, type BlocklyWorkspaceJson } from './editor/lowerBlocklyToIR';
 import { starterComponents, starterWorkspaceJson } from './editor/starterProject';
@@ -73,11 +74,15 @@ export type EditorOutletContext = {
   toolbox: ReturnType<typeof buildToolbox>;
   components: ComponentInstance[];
   editorMode: EditorMode;
+  onEditorModeChange: (mode: EditorMode) => void;
+  simulationSpeed: number;
+  onSimulationSpeedChange: (speed: number) => void;
   emulatorStatus: 'idle' | 'compiling' | 'running' | 'error';
   saveNote: string;
   setWorkspaceJson: (json: BlocklyWorkspaceJson) => void;
   handleWorkspaceChange: (json: BlocklyWorkspaceJson) => void;
   handleBlockSelection: (blockId: string | null) => void;
+  handleWorkspaceReady: (api: { locateBlock: (query: string) => boolean }) => void;
   selectedBlockId: string | null;
   handleAddComponent: (type: PlaceableComponentType) => void;
   handleRemoveComponent: (id: string) => void;
@@ -101,6 +106,7 @@ export type EditorOutletContext = {
   setActiveLessonId: (id: string | null) => void;
   checkResults: Record<string, boolean>;
   checking: boolean;
+  locateMessage: string;
   lessons: typeof lessons;
   canPromoteToCloud: boolean;
   onSaveToCloud: () => void;
@@ -118,6 +124,7 @@ export type EditorOutletContext = {
   preferences: PinboardPreferences;
   setPreferences: (next: PinboardPreferences) => void;
   resetPreferences: () => void;
+  locateBlock: (query: string) => void;
 };
 
 function App({ localId }: { localId?: string } = {}) {
@@ -133,6 +140,7 @@ function App({ localId }: { localId?: string } = {}) {
         'My Pinboard Project',
         starterComponents,
         preferences.defaultEditorMode,
+        preferences.defaultSimulationSpeed,
       ),
   );
   const [workspaceNonce, setWorkspaceNonce] = useState(0);
@@ -151,10 +159,13 @@ function App({ localId }: { localId?: string } = {}) {
   const [saveNote, setSaveNote] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>(() => loadedProject.settings?.editorMode ?? preferences.defaultEditorMode);
+  const [simulationSpeed, setSimulationSpeed] = useState<number>(() => loadedProject.settings?.simulationSpeed ?? preferences.defaultSimulationSpeed);
   const toolbox = useMemo(() => buildToolbox(editorMode), [editorMode]);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(() => loadedProject.lessons?.lessonId ?? null);
   const [checkResults, setCheckResults] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState(false);
+  const [locateMessage, setLocateMessage] = useState('');
+  const [infoOpen, setInfoOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [cloudProjectId, setCloudProjectId] = useState<string | null>(() => loadedProject.metadata.cloudProjectId ?? null);
   const [conflict, setConflict] = useState<{ document: PinboardProjectDocument | null; hash: string } | null>(null);
@@ -162,6 +173,7 @@ function App({ localId }: { localId?: string } = {}) {
   const conflictOpenRef = useRef(false);
   const schedulerRef = useRef<RuntimeScheduler | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
+  const workspaceApiRef = useRef<{ locateBlock: (query: string) => boolean }>({ locateBlock: () => false });
 
   useEffect(() => {
     void getUser().then(setUser);
@@ -171,6 +183,20 @@ function App({ localId }: { localId?: string } = {}) {
   useEffect(() => {
     setRegisteredComponents(components);
   }, [components]);
+
+  useEffect(() => {
+    const reduced =
+      preferences.reducedMotion === 'on' ||
+      (preferences.reducedMotion === 'system' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    document.documentElement.dataset.pinboardReducedMotion = reduced ? 'true' : 'false';
+    return () => {
+      delete document.documentElement.dataset.pinboardReducedMotion;
+    };
+  }, [preferences.reducedMotion]);
+
+  useEffect(() => {
+    schedulerRef.current?.setSpeed(simulationSpeed);
+  }, [simulationSpeed]);
 
   const lowered = useMemo(() => lowerWorkspaceToIR(workspaceJson, components), [workspaceJson, components]);
   const printed = useMemo(() => printArduino(lowered.program), [lowered]);
@@ -200,14 +226,14 @@ function App({ localId }: { localId?: string } = {}) {
           .filter(([, passed]) => passed)
           .map(([id]) => id),
       },
-      settings: { ...projectRef.current.settings, editorMode },
+      settings: { ...projectRef.current.settings, editorMode, simulationSpeed },
       metadata: {
         ...projectRef.current.metadata,
         cloudProjectId: cloudProjectId ?? undefined,
         updatedAt: new Date().toISOString(),
       },
     };
-  }, [workspaceJson, components, activeLessonId, checkResults, editorMode, cloudProjectId]);
+  }, [workspaceJson, components, activeLessonId, checkResults, editorMode, cloudProjectId, simulationSpeed]);
 
   const syncToCloud = useCallback(
     async (doc: PinboardProjectDocument, cloudId: string, force = false) => {
@@ -273,10 +299,11 @@ function App({ localId }: { localId?: string } = {}) {
     setComponents(incoming.document.hardware.components);
     setActiveLessonId(incoming.document.lessons?.lessonId ?? null);
     setEditorMode(incoming.document.settings?.editorMode ?? 'beginner');
+    setSimulationSpeed(incoming.document.settings?.simulationSpeed ?? preferences.defaultSimulationSpeed);
     setCheckResults({});
     setWorkspaceNonce((nonce) => nonce + 1);
     setSaveNote('Loaded the cloud copy');
-  }, [conflict]);
+  }, [conflict, preferences.defaultSimulationSpeed]);
 
   const resolveConflictDuplicate = useCallback(() => {
     conflictOpenRef.current = false;
@@ -325,7 +352,7 @@ function App({ localId }: { localId?: string } = {}) {
     void scheduler.run(lowered.program).then(() => {
       if (schedulerRef.current === scheduler) setEmulatorStatus('idle');
     });
-  }, [lowered, components, potValues, buttonPressed]);
+  }, [lowered, components, potValues, buttonPressed, simulationSpeed]);
 
   const handleStop = useCallback(() => {
     schedulerRef.current?.stop();
@@ -398,6 +425,18 @@ function App({ localId }: { localId?: string } = {}) {
     setSelectedBlockId(blockId);
   }, []);
 
+  const handleLocateBlock = useCallback((query: string) => {
+    const found = workspaceApiRef.current.locateBlock(query);
+    if (found) {
+      setLocateMessage('Blocks have been added to the workspace.');
+      window.setTimeout(() => setLocateMessage(''), 2500);
+    }
+  }, []);
+
+  const handleWorkspaceReady = useCallback((api: { locateBlock: (query: string) => boolean }) => {
+    workspaceApiRef.current = api;
+  }, []);
+
   const handleExport = useCallback(() => {
     const doc = currentDocument();
     const blob = new Blob([exportProjectJson(doc)], { type: 'application/json' });
@@ -425,11 +464,12 @@ function App({ localId }: { localId?: string } = {}) {
       setPotValues({});
       setActiveLessonId(result.document.lessons?.lessonId ?? null);
       setEditorMode(result.document.settings?.editorMode ?? 'beginner');
+      setSimulationSpeed(result.document.settings?.simulationSpeed ?? preferences.defaultSimulationSpeed);
       setCheckResults({});
       setWorkspaceNonce((nonce) => nonce + 1);
       setSaveNote('Project imported');
     });
-  }, []);
+  }, [preferences.defaultSimulationSpeed]);
 
   useEffect(() => {
     return () => {
@@ -445,11 +485,15 @@ function App({ localId }: { localId?: string } = {}) {
     toolbox,
     components,
     editorMode,
+    onEditorModeChange: setEditorMode,
+    simulationSpeed,
+    onSimulationSpeedChange: setSimulationSpeed,
     emulatorStatus,
     saveNote,
     setWorkspaceJson,
     handleWorkspaceChange,
     handleBlockSelection,
+    handleWorkspaceReady,
     selectedBlockId,
     handleAddComponent,
     handleRemoveComponent,
@@ -473,6 +517,7 @@ function App({ localId }: { localId?: string } = {}) {
     setActiveLessonId,
     checkResults,
     checking,
+    locateMessage,
     lessons,
     canPromoteToCloud: user !== null && cloudProjectId === null,
     onSaveToCloud: handleSaveToCloud,
@@ -490,14 +535,14 @@ function App({ localId }: { localId?: string } = {}) {
     preferences,
     setPreferences,
     resetPreferences,
+    locateBlock: handleLocateBlock,
   };
 
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header
         editorBasePath={localId ? `/editor/${localId}` : '/editor/new'}
-        editorMode={editorMode}
-        onEditorModeChange={setEditorMode}
+        onInfoClick={() => setInfoOpen(true)}
       />
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -521,6 +566,8 @@ function App({ localId }: { localId?: string } = {}) {
           onDuplicate={resolveConflictDuplicate}
         />
       )}
+
+      {infoOpen && <InfoDialog onClose={() => setInfoOpen(false)} />}
     </div>
   );
 }
@@ -604,6 +651,7 @@ export function EditorBuildPage() {
             toolbox={ctx.toolbox}
             onWorkspaceChange={ctx.handleWorkspaceChange}
             onSelectionChange={ctx.handleBlockSelection}
+            onWorkspaceReady={ctx.handleWorkspaceReady}
           />
         </div>
         <div className="w-[340px] flex-shrink-0 bg-surface flex flex-col overflow-y-auto">
@@ -644,8 +692,11 @@ export function EditorLessonsPage() {
         activeLessonId={ctx.activeLessonId}
         checkResults={ctx.checkResults}
         checking={ctx.checking}
+        locateMessage={ctx.locateMessage}
+        showHintsAutomatically={ctx.preferences.showHintsAutomatically}
         onSelectLesson={ctx.setActiveLessonId}
         onCheckWork={ctx.handleCheckWork}
+        onLocateBlock={ctx.locateBlock}
       />
     </div>
   );
@@ -1023,6 +1074,20 @@ export function EditorPreferencesPage() {
 
         <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-2">
           <PreferenceSection title="Editor">
+            <PreferenceField label="Current project editor mode">
+              <select
+                data-testid="editor-mode"
+                aria-label="Editor mode"
+                value={ctx.editorMode}
+                onChange={(e) => ctx.onEditorModeChange(e.target.value as EditorMode)}
+                className="w-full rounded-2xl border-2 border-ink bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-[3px_3px_0_#111]"
+                title="Editor mode — changes which blocks the toolbox offers"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </PreferenceField>
             <PreferenceField label="Default editor mode for new projects">
               <select
                 value={preferences.defaultEditorMode}
@@ -1032,6 +1097,18 @@ export function EditorPreferencesPage() {
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
                 <option value="advanced">Advanced</option>
+              </select>
+            </PreferenceField>
+            <PreferenceField label="Default simulation speed for new projects">
+              <select
+                value={preferences.defaultSimulationSpeed}
+                onChange={(e) => update('defaultSimulationSpeed', Number(e.target.value))}
+                className="w-full rounded-2xl border-2 border-ink bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-[3px_3px_0_#111]"
+              >
+                <option value={0.5}>0.5x</option>
+                <option value={1}>1x</option>
+                <option value={1.5}>1.5x</option>
+                <option value={2}>2x</option>
               </select>
             </PreferenceField>
             <PreferenceField label="Code preview font size">
@@ -1072,20 +1149,61 @@ export function EditorPreferencesPage() {
           </PreferenceSection>
 
           <PreferenceSection title="Lessons">
+            <PreferenceField label="Hint display">
+              <select
+                value={preferences.showHintsAutomatically ? 'auto' : 'click'}
+                onChange={(e) => update('showHintsAutomatically', e.target.value === 'auto')}
+                className="w-full rounded-2xl border-2 border-ink bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-[3px_3px_0_#111]"
+              >
+                <option value="click">Require clicking "Show hint"</option>
+                <option value="auto">Show hints automatically</option>
+              </select>
+            </PreferenceField>
             <p className="text-sm text-gray-600">
-              Lesson hints are already click-to-reveal, so there is no separate hint preference to toggle yet.
+              Hints are already part of the lesson content; this only changes whether they wait for a click or open right away.
             </p>
           </PreferenceSection>
 
           <PreferenceSection title="Simulation">
+            <PreferenceField label="Current project simulation speed">
+              <select
+                data-testid="simulation-speed"
+                value={ctx.simulationSpeed}
+                onChange={(e) => ctx.onSimulationSpeedChange(Number(e.target.value))}
+                className="w-full rounded-2xl border-2 border-ink bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-[3px_3px_0_#111]"
+              >
+                <option value={0.5}>0.5x</option>
+                <option value={1}>1x</option>
+                <option value={1.5}>1.5x</option>
+                <option value={2}>2x</option>
+                <option value={4}>4x</option>
+              </select>
+            </PreferenceField>
             <p className="text-sm text-gray-600">
-              Simulation speed and sound are not exposed as live app preferences yet, so they stay on the project and runtime side.
+              This changes how fast the runtime clock advances for the open project. New projects start at your default speed.
+            </p>
+            <p className="text-xs text-gray-500">
+              Sound effects are not exposed here because the simulator does not have an audio path yet.
             </p>
           </PreferenceSection>
 
           <PreferenceSection title="Accessibility">
+            <PreferenceField label="Reduced motion">
+              <select
+                value={preferences.reducedMotion}
+                onChange={(e) => update('reducedMotion', e.target.value as PinboardPreferences['reducedMotion'])}
+                className="w-full rounded-2xl border-2 border-ink bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-[3px_3px_0_#111]"
+              >
+                <option value="system">Follow system setting</option>
+                <option value="off">Animation allowed</option>
+                <option value="on">Always reduce motion</option>
+              </select>
+            </PreferenceField>
             <p className="text-sm text-gray-600">
-              Reduced-motion and high-contrast overrides are not wired to a second palette in this build, so those controls are omitted for now.
+              The shell will respect your operating system unless you force reduced motion on.
+            </p>
+            <p className="text-xs text-gray-500">
+              High-contrast mode is skipped until the design tokens support a second palette.
             </p>
           </PreferenceSection>
         </div>

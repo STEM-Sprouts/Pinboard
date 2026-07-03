@@ -88,6 +88,7 @@ export function createLocalProject(
   title = 'My Pinboard Project',
   components: ComponentInstance[] = [],
   editorMode: EditorMode = 'beginner',
+  simulationSpeed = 1,
 ): PinboardProjectDocument {
   return {
     schemaVersion: 1,
@@ -96,6 +97,6 @@ export function createLocalProject(
     board: { id: 'arduino-uno', fqbn: 'arduino:avr:uno' },
     workspace: { format: 'blockly-json', data: workspaceData },
     hardware: { components, wiring: [] },
-    settings: { editorMode, simulationSpeed: 1, showAdvancedBlocks: false },
+    settings: { editorMode, simulationSpeed, showAdvancedBlocks: false },
   };
 }
