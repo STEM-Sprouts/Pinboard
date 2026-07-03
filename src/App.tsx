@@ -28,8 +28,16 @@ import {
 } from './persistence/projectDocument';
 import { exportFileName, exportProjectJson, importProjectJson } from './persistence/importExport';
 import LessonPanel from './components/LessonPanel';
+import ConflictDialog from './components/ConflictDialog';
 import { lessons } from './lessons/lessons';
 import { evaluateAllChecks } from './lessons/checks';
+import { getSupabase } from './supabase/client';
+import { getUser, onAuthChange, type AuthUser } from './supabase/auth';
+import {
+  fetchCloudProject,
+  saveProjectToCloud,
+  supabaseProjectPort,
+} from './supabase/projectRepository';
 
 const MAX_SERIAL_LINES = 500;
 const AUTOSAVE_DEBOUNCE_MS = 750;
@@ -82,6 +90,20 @@ function App({ localId }: { localId?: string } = {}) {
   const [checkResults, setCheckResults] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState(false);
 
+  // --- cloud sync (ADR-0006: local is authoritative; cloud is an add-on) ---
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [cloudProjectId, setCloudProjectId] = useState<string | null>(
+    () => loadedProject.metadata.cloudProjectId ?? null,
+  );
+  const [conflict, setConflict] = useState<{ document: PinboardProjectDocument | null; hash: string } | null>(null);
+  const lastSyncedHashRef = useRef<string | undefined>(undefined);
+  const conflictOpenRef = useRef(false);
+
+  useEffect(() => {
+    void getUser().then(setUser);
+    return onAuthChange(setUser);
+  }, []);
+
   const schedulerRef = useRef<RuntimeScheduler | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
 
@@ -120,9 +142,44 @@ function App({ localId }: { localId?: string } = {}) {
           .map(([id]) => id),
       },
       settings: { ...projectRef.current.settings, editorMode },
-      metadata: { ...projectRef.current.metadata, updatedAt: new Date().toISOString() },
+      metadata: {
+        ...projectRef.current.metadata,
+        cloudProjectId: cloudProjectId ?? undefined,
+        updatedAt: new Date().toISOString(),
+      },
     };
-  }, [workspaceJson, components, activeLessonId, checkResults, editorMode]);
+  }, [workspaceJson, components, activeLessonId, checkResults, editorMode, cloudProjectId]);
+
+  /** Push to the cloud row `cloudId`. A failed cloud write never touches
+   * local work; a hash mismatch with our last sync opens the conflict
+   * prompt instead of writing (persistence.md §4). */
+  const syncToCloud = useCallback(
+    async (doc: PinboardProjectDocument, cloudId: string, force = false) => {
+      const client = getSupabase();
+      if (!client || !user || conflictOpenRef.current) return;
+      const port = supabaseProjectPort(client);
+      if (!force) {
+        const probe = await fetchCloudProject(port, cloudId);
+        if (!probe.ok) {
+          setSaveNote('Cloud save failed — your local save is safe');
+          return;
+        }
+        if (probe.exists && lastSyncedHashRef.current !== undefined && probe.hash !== lastSyncedHashRef.current) {
+          conflictOpenRef.current = true;
+          setConflict({ document: probe.document, hash: probe.hash });
+          return;
+        }
+      }
+      const result = await saveProjectToCloud(port, doc, user.id, force ? undefined : lastSyncedHashRef.current, cloudId);
+      if (result.status === 'error') {
+        setSaveNote('Cloud save failed — your local save is safe');
+      } else {
+        lastSyncedHashRef.current = result.hash;
+        if (result.status === 'saved') setSaveNote('Saved locally + cloud');
+      }
+    },
+    [user],
+  );
 
   // Debounced autosave; a failure warns and points to export, never crashes.
   useEffect(() => {
@@ -131,9 +188,52 @@ function App({ localId }: { localId?: string } = {}) {
       projectRef.current = updated;
       const result = store.save(updated);
       setSaveNote(result.ok ? 'Saved locally' : 'Save failed — export your work!');
+      // Cloud only after a successful local save, and only once promoted.
+      if (result.ok && cloudProjectId) void syncToCloud(updated, cloudProjectId);
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [currentDocument, store]);
+  }, [currentDocument, store, cloudProjectId, syncToCloud]);
+
+  /** The promotion ask (supabase.md §1): nothing uploads until the student
+   * chooses "Save to my account". */
+  const handleSaveToCloud = useCallback(() => {
+    const id = projectRef.current.metadata.id;
+    setCloudProjectId(id); // autosave picks it up and performs the first sync
+    setSaveNote('Saving to your account…');
+  }, []);
+
+  const resolveConflictKeepLocal = useCallback(() => {
+    conflictOpenRef.current = false;
+    setConflict(null);
+    if (cloudProjectId) void syncToCloud(currentDocument(), cloudProjectId, true);
+  }, [cloudProjectId, syncToCloud, currentDocument]);
+
+  const resolveConflictUseCloud = useCallback(() => {
+    conflictOpenRef.current = false;
+    const incoming = conflict;
+    setConflict(null);
+    if (!incoming?.document) return;
+    schedulerRef.current?.stop();
+    projectRef.current = incoming.document;
+    lastSyncedHashRef.current = incoming.hash;
+    setLoadedProject(incoming.document);
+    setWorkspaceJson(incoming.document.workspace.data as BlocklyWorkspaceJson);
+    setComponents(incoming.document.hardware.components);
+    setActiveLessonId(incoming.document.lessons?.lessonId ?? null);
+    setEditorMode(incoming.document.settings?.editorMode ?? 'beginner');
+    setCheckResults({});
+    setWorkspaceNonce((nonce) => nonce + 1);
+    setSaveNote('Loaded the cloud copy');
+  }, [conflict]);
+
+  const resolveConflictDuplicate = useCallback(() => {
+    conflictOpenRef.current = false;
+    setConflict(null);
+    const duplicateId = crypto.randomUUID();
+    lastSyncedHashRef.current = undefined;
+    setCloudProjectId(duplicateId); // future syncs write the new row
+    void syncToCloud(currentDocument(), duplicateId, true);
+  }, [syncToCloud, currentDocument]);
 
   const handleRun = useCallback(() => {
     schedulerRef.current?.stop();
@@ -321,6 +421,8 @@ function App({ localId }: { localId?: string } = {}) {
         saveNote={saveNote}
         editorMode={editorMode}
         onEditorModeChange={setEditorMode}
+        canPromoteToCloud={user !== null && cloudProjectId === null}
+        onSaveToCloud={handleSaveToCloud}
         onRun={handleRun}
         onStop={handleStop}
         onReset={handleReset}
@@ -378,6 +480,14 @@ function App({ localId }: { localId?: string } = {}) {
       <div className="h-56 border-t border-gray-200 bg-surface shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 w-full">
         <CodePreview code={printed.code} highlight={highlightRange} />
       </div>
+
+      {conflict && (
+        <ConflictDialog
+          onKeepLocal={resolveConflictKeepLocal}
+          onUseCloud={resolveConflictUseCloud}
+          onDuplicate={resolveConflictDuplicate}
+        />
+      )}
     </div>
   );
 }

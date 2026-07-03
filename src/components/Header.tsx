@@ -8,6 +8,9 @@ interface HeaderProps {
   saveNote: string;
   editorMode: EditorMode;
   onEditorModeChange: (mode: EditorMode) => void;
+  /** Signed in but this project is not in the cloud yet — show the ask. */
+  canPromoteToCloud: boolean;
+  onSaveToCloud: () => void;
   onRun: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -21,6 +24,8 @@ export default function Header({
   saveNote,
   editorMode,
   onEditorModeChange,
+  canPromoteToCloud,
+  onSaveToCloud,
   onRun,
   onStop,
   onReset,
@@ -61,6 +66,15 @@ export default function Header({
 
       <div className="flex items-center gap-3">
         <AccountControl />
+        {canPromoteToCloud && (
+          <button
+            data-testid="save-to-cloud"
+            onClick={onSaveToCloud}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 text-sm font-medium"
+          >
+            Save to my account
+          </button>
+        )}
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"

@@ -33,6 +33,7 @@ export const PinboardProjectSchema = z.object({
     createdAt: z.string(),
     updatedAt: z.string(),
     ownerDisplayName: z.string().optional(),
+    cloudProjectId: z.string().optional(),
   }),
   board: z.object({
     id: z.literal('arduino-uno'),

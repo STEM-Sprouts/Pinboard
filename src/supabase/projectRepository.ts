@@ -27,6 +27,8 @@ export type ProjectUpsert = {
 export type ProjectCloudPort = {
   upsertProject(row: ProjectUpsert): Promise<{ error: string | null }>;
   listProjects(): Promise<{ data: unknown[]; error: string | null }>;
+  /** Single row by id, or null when absent (both are non-errors). */
+  getProject(id: string): Promise<{ data: unknown | null; error: string | null }>;
 };
 
 const ProjectRowSchema = z.object({
@@ -47,11 +49,13 @@ export async function saveProjectToCloud(
   doc: PinboardProjectDocument,
   ownerId: string,
   lastSyncedHash?: string,
+  /** Cloud row id; differs from the doc id after "save as duplicate". */
+  cloudId: string = doc.metadata.id,
 ): Promise<CloudSaveResult> {
   const hash = await hashProject(doc);
   if (hash === lastSyncedHash) return { status: 'skipped', hash };
   const { error } = await port.upsertProject({
-    id: doc.metadata.id,
+    id: cloudId,
     owner_id: ownerId,
     title: doc.metadata.title,
     board_id: doc.board.id,
@@ -89,6 +93,31 @@ export async function loadCloudProjects(port: ProjectCloudPort): Promise<
   return { ok: true, projects };
 }
 
+export type CloudProjectState =
+  | { ok: true; exists: false }
+  | { ok: true; exists: true; hash: string; updatedAt: string; document: PinboardProjectDocument | null }
+  | { ok: false; error: string };
+
+/**
+ * Conflict probe (persistence.md §4): what does the cloud hold for this id?
+ * The caller compares `hash` against its last-synced hash; a difference
+ * means someone else wrote since we synced — prompt, never auto-merge.
+ */
+export async function fetchCloudProject(port: ProjectCloudPort, id: string): Promise<CloudProjectState> {
+  const { data, error } = await port.getProject(id);
+  if (error !== null) return { ok: false, error };
+  if (data === null) return { ok: true, exists: false };
+  const row = ProjectRowSchema.safeParse(data);
+  if (!row.success) return { ok: false, error: 'Cloud row failed validation' };
+  let document: PinboardProjectDocument | null = null;
+  try {
+    document = migrateProject(row.data.project_doc);
+  } catch {
+    document = null;
+  }
+  return { ok: true, exists: true, hash: row.data.project_hash, updatedAt: row.data.updated_at, document };
+}
+
 export function supabaseProjectPort(client: SupabaseClient): ProjectCloudPort {
   return {
     async upsertProject(row) {
@@ -101,6 +130,14 @@ export function supabaseProjectPort(client: SupabaseClient): ProjectCloudPort {
         .select('id, title, project_doc, project_hash, updated_at')
         .order('updated_at', { ascending: false });
       return { data: data ?? [], error: error ? error.message : null };
+    },
+    async getProject(id) {
+      const { data, error } = await client
+        .from('projects')
+        .select('id, title, project_doc, project_hash, updated_at')
+        .eq('id', id)
+        .maybeSingle();
+      return { data: data ?? null, error: error ? error.message : null };
     },
   };
 }

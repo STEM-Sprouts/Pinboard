@@ -47,6 +47,9 @@ export type PinboardProjectDocument = {
     createdAt: string;
     updatedAt: string;
     ownerDisplayName?: string;
+    /** Set when the student chose "Save to my account" (supabase.md §1);
+     * never set silently on sign-in. */
+    cloudProjectId?: string;
   };
 
   board: {

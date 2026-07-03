@@ -21,7 +21,9 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
+    // --mode e2e loads .env.e2e, which blanks the Supabase keys: the core
+    // suite always runs the unconfigured, local-first build (testing.md §4).
+    command: 'npm run dev -- --port 5173 --strictPort --mode e2e',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -9,6 +9,7 @@ import { starterComponents, starterWorkspaceJson } from '../editor/starterProjec
 import { createLocalProject } from '../persistence/projectDocument';
 import { hashProject } from '../persistence/projectHash';
 import {
+  fetchCloudProject,
   loadCloudProjects,
   saveProjectToCloud,
   type ProjectCloudPort,
@@ -27,6 +28,9 @@ function fakePort(overrides: Partial<ProjectCloudPort> = {}) {
     },
     async listProjects() {
       return { data: [], error: null };
+    },
+    async getProject() {
+      return { data: null, error: null };
     },
     ...overrides,
   };
@@ -89,5 +93,36 @@ describe('loadCloudProjects', () => {
       },
     });
     expect(await loadCloudProjects(port)).toEqual({ ok: false, error: 'RLS says no' });
+  });
+});
+
+describe('fetchCloudProject (conflict detection)', () => {
+  it('returns the cloud hash and document when the row exists', async () => {
+    const row = { id: 'p1', title: 'Cloud Test', project_doc: doc(), project_hash: 'cloud-hash', updated_at: NOW };
+    const { port } = fakePort({
+      async getProject() {
+        return { data: row, error: null };
+      },
+    });
+    const result = await fetchCloudProject(port, 'p1');
+    expect(result).toMatchObject({ ok: true, exists: true, hash: 'cloud-hash' });
+  });
+
+  it('reports absence without error', async () => {
+    const { port } = fakePort({
+      async getProject() {
+        return { data: null, error: null };
+      },
+    });
+    expect(await fetchCloudProject(port, 'p1')).toEqual({ ok: true, exists: false });
+  });
+
+  it('reports failures without throwing', async () => {
+    const { port } = fakePort({
+      async getProject() {
+        return { data: null, error: 'offline' };
+      },
+    });
+    expect(await fetchCloudProject(port, 'p1')).toEqual({ ok: false, error: 'offline' });
   });
 });

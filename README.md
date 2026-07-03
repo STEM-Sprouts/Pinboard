@@ -118,7 +118,7 @@ runtime, codegen, hardware, persistence, and compiler subsystems) lives in
 [docs/](docs/) — start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
 ordered tracker [docs/TASKS.md](docs/TASKS.md) — and drives the phases below.
 
-**Status: Phase 0 and Phase 1 complete. Next up: Phase 2 (optional Supabase cloud save).**
+**Status: Phases 0–3 complete, including optional cloud save (Phase 2) — live-verified against Supabase with RLS tests. Remaining: Google OAuth provider config, feature-gated compile backend (Phase 4), share links (Phase 5).**
 
 Phase 0 — headless runtime spike (done):
 - ✅ Canonical IR types (`src/ir/`) and audited Arduino Uno board profile (`src/hardware/`)
@@ -176,8 +176,13 @@ Phase 1 — learning-loop MVP (complete):
   (tone Hz, angle dial), blocks that lower through instances (Servo.h and
   attach() appear in setup() automatically), timer-conflict warnings, and
   diagnostic quick fixes ("Move LED 1 to D13" — offered, never auto-applied)
-- ⏳ Next: Phase 2 cloud save (Supabase project + env keys needed), then the
-  feature-gated compile backend (Phase 4) and share links (Phase 5)
+- ✅ **Cloud save (Phase 2, optional path)**: env-gated Supabase client (no keys →
+  purely local app, E2E-asserted), "Save to my account" promotion ask (nothing
+  uploads silently), debounced cloud autosave with normalized-hash dedup,
+  conflict prompt (keep local / use cloud / duplicate), `/projects` merges
+  local + cloud rows — live RLS tests prove user isolation
+- ⏳ Next: Google OAuth provider config, feature-gated compile backend
+  (Phase 4), share links (Phase 5)
 
 ---
 
