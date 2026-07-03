@@ -36,3 +36,4 @@ playwright-report/
 
 # Generated fixture sketches
 build/
+.env.local
