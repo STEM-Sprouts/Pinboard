@@ -1,4 +1,5 @@
 import * as Blockly from 'blockly/core';
+import { componentDropdownOptions } from './componentRegistry';
 
 const COLORS = {
   STRUCTURE: '#FFAB19',
@@ -6,6 +7,9 @@ const COLORS = {
   CONTROL: '#FFBF00',
   LOGIC: '#59C059',
   SERIAL: '#5CB1D6',
+  COMPONENTS: '#9966FF',
+  MATH: '#59A869',
+  VARIABLES: '#FF8C1A',
 };
 
 export const defineBlocks = () => {
@@ -65,6 +69,52 @@ export const defineBlocks = () => {
       "output": "Boolean",
       "colour": COLORS.PINS,
       "tooltip": "Reads the state of a digital pin",
+      "helpUrl": ""
+    },
+    // Pins: set PWM pin [n] to [value] (analogWrite; diagnostics warn on non-PWM pins)
+    {
+      "type": "set_pwm",
+      "message0": "set PWM pin %1 to %2",
+      "args0": [
+        { "type": "field_number", "name": "PIN", "value": 9, "min": 0, "max": 13, "precision": 1 },
+        { "type": "input_value", "name": "VALUE", "check": "Number" }
+      ],
+      "inputsInline": true,
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.PINS,
+      "tooltip": "Write a PWM value (0–255) to a pin, like Arduino analogWrite",
+      "helpUrl": ""
+    },
+    // Structure: comment
+    {
+      "type": "comment_note",
+      "message0": "note %1",
+      "args0": [
+        { "type": "field_input", "name": "TEXT", "text": "describe this part" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.STRUCTURE,
+      "tooltip": "A note for humans — becomes a // comment in the code",
+      "helpUrl": ""
+    },
+    // Control: for [var] from [a] to [b] by [step]
+    {
+      "type": "for_range",
+      "message0": "for %1 from %2 to %3 by %4 %5 %6",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "i" },
+        { "type": "field_number", "name": "FROM", "value": 0, "precision": 1 },
+        { "type": "field_number", "name": "TO", "value": 10, "precision": 1 },
+        { "type": "field_number", "name": "BY", "value": 1, "precision": 1 },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "DO" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.CONTROL,
+      "tooltip": "Count from one number to another, running the blocks each step",
       "helpUrl": ""
     },
     // Control: delay [ms]
@@ -133,6 +183,409 @@ export const defineBlocks = () => {
       "output": "String",
       "colour": COLORS.SERIAL,
       "tooltip": "A string of text",
+      "helpUrl": ""
+    }
+  ]);
+
+  // Component blocks target placed instances, not raw pins (hardware.md §3).
+  // Their dropdowns list the components currently in the project, so they
+  // are defined in JS with lazy option functions.
+  Blockly.Blocks['led_set'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('turn')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField(
+          new Blockly.FieldDropdown([
+            ['on', 'ON'],
+            ['off', 'OFF'],
+          ]),
+          'STATE',
+        );
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn an LED on or off (respects the LED wiring)');
+    },
+  };
+
+  Blockly.Blocks['led_brightness'] = {
+    init(this: Blockly.Block) {
+      this.appendValueInput('VALUE')
+        .setCheck('Number')
+        .appendField('set')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField('brightness to');
+      this.setInputsInline(true);
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Set LED brightness 0–255 with PWM (respects the LED wiring)');
+    },
+  };
+
+  Blockly.Blocks['led_blink'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('blink')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('led', '(add an LED first)')),
+          'COMPONENT',
+        )
+        .appendField('every')
+        .appendField(new Blockly.FieldNumber(500, 0, undefined, 1), 'MS')
+        .appendField('ms');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn the LED on, wait, turn it off, wait — one full blink');
+    },
+  };
+
+  Blockly.Blocks['button_is_pressed'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('button', '(add a Button first)')),
+          'COMPONENT',
+        )
+        .appendField('is pressed?');
+      this.setOutput(true, 'Boolean');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('True while the button is held down (respects pull mode)');
+    },
+  };
+
+  Blockly.Blocks['button_wait'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('wait until')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('button', '(add a Button first)')),
+          'COMPONENT',
+        )
+        .appendField('is pressed');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Pause here until the button is pressed (the Arduino really spins)');
+    },
+  };
+
+  Blockly.Blocks['pot_read'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('read')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        );
+      this.setOutput(true, 'Number');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Reads the knob position, 0–1023');
+    },
+  };
+
+  Blockly.Blocks['buzzer_play'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('play')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('buzzer', '(add a Buzzer first)')),
+          'COMPONENT',
+        )
+        .appendField('at')
+        .appendField(new Blockly.FieldNumber(440, 31, 65535, 1), 'FREQ')
+        .appendField('Hz');
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Start a tone on the buzzer — it keeps sounding until you stop it');
+    },
+  };
+
+  Blockly.Blocks['buzzer_stop'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('stop')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('buzzer', '(add a Buzzer first)')),
+          'COMPONENT',
+        );
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Silence the buzzer (noTone)');
+    },
+  };
+
+  Blockly.Blocks['servo_set_angle'] = {
+    init(this: Blockly.Block) {
+      this.appendValueInput('ANGLE')
+        .setCheck('Number')
+        .appendField('set')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('servo', '(add a Servo first)')),
+          'COMPONENT',
+        )
+        .appendField('angle to');
+      this.setInputsInline(true);
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Turn the servo arm to an angle, 0–180 degrees');
+    },
+  };
+
+  Blockly.Blocks['pot_map'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField('map')
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        )
+        .appendField('to')
+        .appendField(new Blockly.FieldNumber(0), 'LOW')
+        .appendField('–')
+        .appendField(new Blockly.FieldNumber(255), 'HIGH');
+      this.setOutput(true, 'Number');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('Knob position rescaled to your range (like map(analogRead(pin), 0, 1023, low, high))');
+    },
+  };
+
+  Blockly.Blocks['pot_above'] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField(
+          new Blockly.FieldDropdown(() => componentDropdownOptions('potentiometer', '(add a Potentiometer first)')),
+          'COMPONENT',
+        )
+        .appendField('above')
+        .appendField(new Blockly.FieldNumber(512, 0, 1023, 1), 'THRESHOLD')
+        .appendField('?');
+      this.setOutput(true, 'Boolean');
+      this.setColour(COLORS.COMPONENTS);
+      this.setTooltip('True while the knob reads above the threshold (0–1023)');
+    },
+  };
+
+  // Variables / Logic / Math / Time (codegen.md §5). Variables use Blockly's
+  // field_variable for the create/rename UI; all beginner variables lower to
+  // globals so counters persist across loop() passes (codegen.md §6).
+  Blockly.defineBlocksWithJsonArray([
+    {
+      "type": "num_value",
+      "message0": "%1",
+      "args0": [{ "type": "field_number", "name": "NUM", "value": 0 }],
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "A number",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_arith",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A" },
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["+", "ADD"], ["−", "SUB"], ["×", "MUL"], ["÷", "DIV"], ["remainder", "MOD"]]
+        },
+        { "type": "input_value", "name": "B" }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Do math with two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "random_range",
+      "message0": "random from %1 to %2",
+      "args0": [
+        { "type": "field_number", "name": "FROM", "value": 1, "precision": 1 },
+        { "type": "field_number", "name": "TO", "value": 10, "precision": 1 }
+      ],
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Picks a random whole number in the range (both ends included)",
+      "helpUrl": ""
+    },
+    {
+      "type": "map_range",
+      "message0": "map %1 from %2 – %3 to %4 – %5",
+      "args0": [
+        { "type": "input_value", "name": "VALUE" },
+        { "type": "field_number", "name": "FROMLOW", "value": 0 },
+        { "type": "field_number", "name": "FROMHIGH", "value": 1023 },
+        { "type": "field_number", "name": "TOLOW", "value": 0 },
+        { "type": "field_number", "name": "TOHIGH", "value": 255 }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Rescales a value from one range to another (like Arduino map)",
+      "helpUrl": ""
+    },
+    {
+      "type": "constrain_range",
+      "message0": "constrain %1 between %2 and %3",
+      "args0": [
+        { "type": "input_value", "name": "VALUE", "check": "Number" },
+        { "type": "field_number", "name": "LOW", "value": 0 },
+        { "type": "field_number", "name": "HIGH", "value": 255 }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Keeps a value inside a range (like Arduino constrain)",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_minmax",
+      "message0": "%1 of %2 and %3",
+      "args0": [
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["smaller", "MIN"], ["larger", "MAX"]]
+        },
+        { "type": "input_value", "name": "A", "check": "Number" },
+        { "type": "input_value", "name": "B", "check": "Number" }
+      ],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Picks the smaller (min) or larger (max) of two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "math_abs",
+      "message0": "absolute value of %1",
+      "args0": [{ "type": "input_value", "name": "VALUE", "check": "Number" }],
+      "inputsInline": true,
+      "output": "Number",
+      "colour": COLORS.MATH,
+      "tooltip": "Distance from zero — abs(-7) is 7",
+      "helpUrl": ""
+    },
+    {
+      "type": "compare_op",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A" },
+        {
+          "type": "field_dropdown",
+          "name": "OP",
+          "options": [["=", "EQ"], ["≠", "NEQ"], ["<", "LT"], ["≤", "LTE"], [">", "GT"], ["≥", "GTE"]]
+        },
+        { "type": "input_value", "name": "B" }
+      ],
+      "inputsInline": true,
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "Compare two values",
+      "helpUrl": ""
+    },
+    {
+      "type": "logic_andor",
+      "message0": "%1 %2 %3",
+      "args0": [
+        { "type": "input_value", "name": "A", "check": "Boolean" },
+        { "type": "field_dropdown", "name": "OP", "options": [["and", "AND"], ["or", "OR"]] },
+        { "type": "input_value", "name": "B", "check": "Boolean" }
+      ],
+      "inputsInline": true,
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "Combine two conditions",
+      "helpUrl": ""
+    },
+    {
+      "type": "not_op",
+      "message0": "not %1",
+      "args0": [{ "type": "input_value", "name": "BOOL", "check": "Boolean" }],
+      "output": "Boolean",
+      "colour": COLORS.LOGIC,
+      "tooltip": "True becomes false, false becomes true",
+      "helpUrl": ""
+    },
+    {
+      "type": "if_else",
+      "message0": "if %1 do %2 %3 else %4 %5",
+      "args0": [
+        { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "DO" },
+        { "type": "input_dummy" },
+        { "type": "input_statement", "name": "ELSE" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.LOGIC,
+      "tooltip": "Do one thing when true, another when false",
+      "helpUrl": ""
+    },
+    {
+      "type": "wait_until",
+      "message0": "wait until %1",
+      "args0": [{ "type": "input_value", "name": "CONDITION", "check": "Boolean" }],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.CONTROL,
+      "tooltip": "Pause here until the condition becomes true (checks it constantly)",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_get",
+      "message0": "%1",
+      "args0": [{ "type": "field_variable", "name": "VAR", "variable": "count" }],
+      "output": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "The value of this variable",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_set",
+      "message0": "set %1 to %2",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "count" },
+        { "type": "input_value", "name": "VALUE" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "Store a value in a variable",
+      "helpUrl": ""
+    },
+    {
+      "type": "var_change",
+      "message0": "change %1 by %2",
+      "args0": [
+        { "type": "field_variable", "name": "VAR", "variable": "count" },
+        { "type": "input_value", "name": "DELTA" }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": COLORS.VARIABLES,
+      "tooltip": "Add to a variable (use a negative number to subtract)",
+      "helpUrl": ""
+    },
+    {
+      "type": "millis_now",
+      "message0": "milliseconds since start",
+      "output": "Number",
+      "colour": COLORS.CONTROL,
+      "tooltip": "How long the program has been running (like a stopwatch that never pauses)",
       "helpUrl": ""
     }
   ]);

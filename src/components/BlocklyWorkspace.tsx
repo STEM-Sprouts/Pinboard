@@ -3,130 +3,88 @@ import * as Blockly from 'blockly/core';
 import 'blockly/blocks';
 import * as En from 'blockly/msg/en';
 import { defineBlocks } from '../blocks/definitions';
-import { arduinoGenerator, defineGenerators } from '../blocks/generators';
+import type { ToolboxConfig } from '../blocks/toolbox';
+import type { BlocklyWorkspaceJson } from '../editor/lowerBlocklyToIR';
 
-Blockly.setLocale(En as any);
+Blockly.setLocale(En as unknown as Parameters<typeof Blockly.setLocale>[0]);
 defineBlocks();
-defineGenerators();
-
-const TOOLBOX_CONFIG = {
-  kind: 'categoryToolbox',
-  contents: [
-    {
-      kind: 'category',
-      name: 'Structure',
-      colour: '#FFAB19',
-      contents: [
-        { kind: 'block', type: 'arduino_setup' },
-        { kind: 'block', type: 'arduino_loop' }
-      ]
-    },
-    {
-      kind: 'category',
-      name: 'Pins',
-      colour: '#4C97FF',
-      contents: [
-        { kind: 'block', type: 'set_pin' },
-        { kind: 'block', type: 'read_pin' }
-      ]
-    },
-    {
-      kind: 'category',
-      name: 'Control',
-      colour: '#FFBF00',
-      contents: [
-        { kind: 'block', type: 'delay_ms' },
-        { kind: 'block', type: 'repeat_times' }
-      ]
-    },
-    {
-      kind: 'category',
-      name: 'Logic',
-      colour: '#59C059',
-      contents: [
-        { kind: 'block', type: 'if_do' }
-      ]
-    },
-    {
-      kind: 'category',
-      name: 'Serial',
-      colour: '#5CB1D6',
-      contents: [
-        { kind: 'block', type: 'serial_print' },
-        { kind: 'block', type: 'string_text' }
-      ]
-    }
-  ]
-};
 
 interface BlocklyWorkspaceProps {
-  onCodeChange: (code: string) => void;
+  /** Loaded once at mount; keep the reference stable across renders. */
+  initialWorkspace: BlocklyWorkspaceJson;
+  /** Editor-mode-filtered toolbox (persistence.md §2). Changing it updates
+   * the toolbox only — the loaded workspace is never touched. */
+  toolbox: ToolboxConfig;
+  onWorkspaceChange: (json: BlocklyWorkspaceJson) => void;
+  /** Fires with the selected block id (null on deselect); keep the reference stable. */
+  onSelectionChange?: (blockId: string | null) => void;
 }
 
-export default function BlocklyWorkspace({ onCodeChange }: BlocklyWorkspaceProps) {
+export default function BlocklyWorkspace({
+  initialWorkspace,
+  toolbox,
+  onWorkspaceChange,
+  onSelectionChange,
+}: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const initialToolboxRef = useRef(toolbox);
 
   useEffect(() => {
     if (!blocklyDiv.current || workspaceRef.current) return;
 
     const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox: TOOLBOX_CONFIG,
+      toolbox: initialToolboxRef.current,
       theme: Blockly.Themes.Classic,
       trashcan: true,
       move: { scrollbars: true, drag: true, wheel: true }
     });
     workspaceRef.current = workspace;
 
-    const generateCode = () => {
-      arduinoGenerator.init(workspace);
-      const blocks = workspace.getTopBlocks(true);
-      
-      let setupCode = '';
-      let loopCode = '';
-      
-      // We pass through all top blocks. For our paradigm, auto-add to either loop or setup.
-      blocks.forEach(block => {
-        if (block.type === 'arduino_setup') {
-          setupCode += arduinoGenerator.statementToCode(block, 'DO');
-        } else if (block.type === 'arduino_loop') {
-          loopCode += arduinoGenerator.statementToCode(block, 'DO');
-        } else {
-          // If a block is placed outside setup/loop, you could append to loop or just ignore.
-          // For now, let's treat top-level orphan blocks as living in `loop()`.
-          const code = arduinoGenerator.blockToCode(block);
-          if (typeof code === 'string') {
-            loopCode += code;
-          }
-        }
-      });
-      
-      const setupKeys = Object.keys(arduinoGenerator.setupCode_);
-      const setupList = setupKeys.map(k => arduinoGenerator.setupCode_[k]);
-      
-      const finalSetup = setupList.map(l => '  ' + l).join('\n') + (setupCode ? '\n' + setupCode : '');
-      const fullCode = `void setup() {\n${finalSetup}\n}\n\nvoid loop() {\n${loopCode}}\n`;
-      onCodeChange(fullCode);
+    try {
+      Blockly.serialization.workspaces.load(initialWorkspace as object, workspace);
+    } catch (error) {
+      console.warn('Failed to load initial workspace; starting empty.', error);
+    }
+
+    const emit = () => {
+      onWorkspaceChange(Blockly.serialization.workspaces.save(workspace) as BlocklyWorkspaceJson);
     };
 
     workspace.addChangeListener((e) => {
+      if (e.type === Blockly.Events.SELECTED) {
+        const selected = e as Blockly.Events.Selected;
+        onSelectionChange?.(selected.newElementId ?? null);
+        return;
+      }
       if (e.isUiEvent || e.type === Blockly.Events.FINISHED_LOADING) return;
-      generateCode();
+      emit();
     });
 
-    generateCode();
+    emit();
 
     const onResize = () => Blockly.svgResize(workspace);
     window.addEventListener('resize', onResize);
+    // Container size also changes when panels dock/undock (lesson drawer) —
+    // observe it so the canvas always fills the visible area.
+    const observer = new ResizeObserver(onResize);
+    observer.observe(blocklyDiv.current);
     // Initial resize to ensure layout catches up
     setTimeout(onResize, 100);
 
     return () => {
       window.removeEventListener('resize', onResize);
+      observer.disconnect();
       workspace.dispose();
       workspaceRef.current = null;
     };
-  }, [onCodeChange]);
+  }, [initialWorkspace, onWorkspaceChange, onSelectionChange]);
+
+  // Editor mode changes swap the toolbox in place; the workspace and its
+  // loaded blocks are never reloaded or mutated (persistence.md §2).
+  useEffect(() => {
+    workspaceRef.current?.updateToolbox(toolbox);
+  }, [toolbox]);
 
   return (
     <div className="flex-1 min-w-0 min-h-0 relative w-full h-full">

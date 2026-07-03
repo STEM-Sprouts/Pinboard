@@ -64,7 +64,7 @@ Add specialized sensor/actuator blocks without writing import boilerplate:
 Switch between platforms with a single click — the same blocks generate the correct language automatically.
 
 ### 🧪 In-Browser Emulator
-Test your code **before touching hardware**. The emulator simulates sensor values and pin states directly in the browser. An improved emulator with richer hardware simulation is in active development.
+Test your code **before touching hardware**. The emulator simulates sensor values and pin states directly in the browser. An improved emulator with richer hardware simulation is in active development — see **Pinboard 2.0** below.
 
 ### 🎓 Live Session Mode
 Built for classrooms. Instructors generate a **join code** to start a live session. Students connect instantly — no accounts required. Sessions include:
@@ -104,24 +104,112 @@ npm run dev
 
 ---
 
+## 🏗️ Pinboard 2.0 — IR-based architecture (in progress)
+
+Pinboard is being rebuilt around a single **intermediate representation (IR)** so the
+code preview can never lie about what the simulator does:
+
+```
+Blockly workspace → Project document → IR → { simulator | Arduino C printer | compile check }
+```
+
+The architecture spec (spine, ordered build plan, and per-domain docs for the
+runtime, codegen, hardware, persistence, and compiler subsystems) lives in
+[docs/](docs/) — start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
+ordered tracker [docs/TASKS.md](docs/TASKS.md) — and drives the phases below.
+
+**Status: Phases 0–3 complete, including optional cloud save (Phase 2) — live-verified against Supabase with RLS tests. Remaining: Google OAuth provider config, feature-gated compile backend (Phase 4), share links (Phase 5).**
+
+Phase 0 — headless runtime spike (done):
+- ✅ Canonical IR types (`src/ir/`) and audited Arduino Uno board profile (`src/hardware/`)
+- ✅ Generator-based IR interpreter with cooperative yielding — a tight `while(true)` cannot freeze the tab (`src/runtime/`)
+- ✅ Unified virtual clock: `millis()` and `delay()` share one injected clock; deterministic and headless in Node (ADR-0005)
+- ✅ IR → Arduino C printer with beginner `pinMode` inference (`src/arduino/`)
+- ✅ Runtime tests 1–16 + printer golden tests (`npm test`), driven by synthetic clock/frame schedulers
+
+Phase 1 — learning-loop MVP (complete):
+- ✅ **The editor now runs the honest pipeline**: Blocks → IR → { C preview | IR simulator }. The old
+  mock compile (a hard-coded blink hex that ignored your blocks) is gone — Run executes *your* program.
+- ✅ Blocks→IR lowering (`src/editor/`) as a pure, tested function of the Blockly JSON
+- ✅ Default starter project (Blink) — students never open onto a blank canvas
+- ✅ Local-first persistence: debounced LocalStorage autosave, reload restore,
+  `.pinboard.json` export/import with Zod boundary validation (`src/persistence/`)
+- ✅ Board diagnostics in the hardware panel: non-PWM `analogWrite`, D0/D1 serial pins,
+  timer conflicts, analog-read errors, no-loop / no-output hints (`src/hardware/diagnostics.ts`)
+- ✅ CI: typecheck + lint + unit tests, and an arduino-cli job that compiles every canonical
+  fixture generated from IR (`.github/workflows/`)
+- ✅ **Dynamic component system**: add/remove LED, Button, Potentiometer instances; board-aware
+  pin picker (capability + availability + used-by context per pin); component blocks
+  (`turn LED on`, `is pressed?`, `read pot`) that lower through instance config —
+  active-low LEDs emit opposite writes, button pull mode decides the pressed comparison
+- ✅ Component-binding diagnostics: pin conflicts, unconnected components, and the
+  "your program writes D13 but nothing is connected" teaching warning
+- ✅ Starter project ships with hardware pre-added (LED on D13, Button on D2)
+- ✅ First two lessons drafted (content before engine): Blink, Button Controls LED (`src/lessons/content/`)
+- ✅ **Lesson panel + checks**: pick a lesson, follow steps, press "Check my work" —
+  checks inspect the project document, the IR, and a headless simulation trace
+  ("the LED really blinks"), never the generated code text; progress persists
+  into the project document (`src/lessons/`)
+- ✅ **Variables / Logic / Math / Time blocks**: variables (create/set/change/get, lowered
+  to zero-initialized globals so counters survive `loop()`), if/else, comparisons,
+  and/or/not, wait-until (negation folded into readable C), arithmetic, inclusive
+  random, Arduino `map()`, and `millis()`
+- ✅ **CodeMirror 6 read-only preview**: line numbers + C++ highlighting; strictly
+  one-way blocks→code (typing does nothing, E2E-enforced)
+- ✅ **Line↔block source map**: the printer emits a `CodeSourceMap`; selecting a
+  block highlights exactly its printed lines in the preview — the same map will
+  carry compiler error→block diagnostics later (`src/arduino/sourceMap.ts`)
+- ✅ **Full beginner/intermediate block library**: PWM write, for-range,
+  constrain/min/max/abs, comments, plus component convenience blocks
+  (LED brightness & blink, button wait-until-pressed, pot map/threshold) —
+  every one lowering through instance config, never hardcoded polarity
+- ✅ **Seven lessons**: Blink, Change Blink Speed, Button Controls LED,
+  Potentiometer Controls Brightness, Blink Without Delay (millis), Servo
+  Sweep, Buzzer Alarm — checks run the program headless and assert on the
+  real trace ("the LED really blinks", "the arm really sweeps")
+- ✅ **Editor modes**: beginner / intermediate / advanced filter what the toolbox
+  *offers* only; a mode switch can never touch blocks already in the workspace
+  (E2E-enforced), and the mode persists in the project document
+- ✅ Playwright E2E suite (22 flows) runs as its own CI job alongside
+  typecheck/lint/unit and the arduino-cli fixture-compile job
+- ✅ **Buzzer & Servo** (Phase 3): placeable components with live panel visuals
+  (tone Hz, angle dial), blocks that lower through instances (Servo.h and
+  attach() appear in setup() automatically), timer-conflict warnings, and
+  diagnostic quick fixes ("Move LED 1 to D13" — offered, never auto-applied)
+- ✅ **Cloud save (Phase 2, optional path)**: env-gated Supabase client (no keys →
+  purely local app, E2E-asserted), "Save to my account" promotion ask (nothing
+  uploads silently), debounced cloud autosave with normalized-hash dedup,
+  conflict prompt (keep local / use cloud / duplicate), `/projects` merges
+  local + cloud rows — live RLS tests prove user isolation
+- ⏳ Next: Google OAuth provider config, feature-gated compile backend
+  (Phase 4), share links (Phase 5)
+
+---
+
 ## 🗂️ Project Structure
 
 ```
 pinboard/
 ├── src/
-│   ├── blocks/          # Custom Blockly block definitions
-│   │   ├── structure/   # Setup, loop, boot blocks
-│   │   ├── pins/        # Digital/analog I/O blocks
-│   │   ├── modules/     # Sensor & actuator library blocks
-│   │   └── serial/      # Serial communication blocks
-│   ├── generators/      # Blockly → C / MicroPython code generators
-│   ├── emulator/        # In-browser hardware emulator
-│   ├── session/         # Live session & join code logic
-│   ├── hardware/        # WebSerial flash & serial monitor
-│   └── ui/              # React components & layout
-├── public/
-├── docs/
-└── tests/
+│   ├── blocks/          # Blockly block definitions + component-block registry
+│   ├── components/      # React UI (workspace, hardware panel, pin picker, code preview)
+│   ├── editor/          # Blocks→IR lowering, starter project
+│   ├── ir/              # Pinboard 2.0: canonical IR types + walkers
+│   ├── hardware/        # Board profiles, components, diagnostics engine
+│   ├── runtime/         # IR interpreter, scheduler, virtual clock
+│   ├── arduino/         # IR → Arduino C printer + pinMode inference
+│   ├── persistence/     # Project document, LocalStorage store, import/export
+│   ├── lessons/         # Lesson content (plain text first)
+│   └── testing/         # Synthetic clock/frame harness, IR builders, fixtures
+├── e2e/                 # Playwright end-to-end tests
+└── public/
+```
+
+### Running the tests
+
+```bash
+npm test                 # Vitest: runtime, lowering, diagnostics, persistence
+npx playwright test      # E2E: drives the real app in Chromium
 ```
 
 ---
