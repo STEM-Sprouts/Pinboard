@@ -4,16 +4,28 @@
  * to the running program. Diagnostics are shown here, never buried in a
  * console.
  */
+import { useState } from 'react';
 import LED from './LED';
 import Button from './Button';
 import PinPicker from './PinPicker';
 import SerialMonitor from './SerialMonitor';
-import { allowedPins, buttonUsesPullup, ledIsActiveHigh, signalPin, COMPONENT_LABELS, PLACEABLE_TYPES, type PlaceableComponentType } from '../hardware/components';
+import {
+  allowedPins,
+  buttonUsesPullup,
+  ledIsActiveHigh,
+  signalPin,
+  COMPONENT_EXPLAINERS,
+  COMPONENT_LABELS,
+  PLACEABLE_TYPES,
+  type PlaceableComponentType,
+} from '../hardware/components';
 import type { BoardProfile, Diagnostic, DiagnosticFixAction, PinId } from '../hardware/types';
-import type { ComponentInstance } from '../persistence/projectDocument';
+import type { ComponentInstance, EditorMode } from '../persistence/projectDocument';
 
 interface SimProps {
   board: BoardProfile;
+  /** Drives how the ⓘ explainers talk: simpler words in beginner mode. */
+  editorMode: EditorMode;
   components: ComponentInstance[];
   /** Electrical digital level per pin, from the runtime's pin store. */
   pinStates: Record<string, boolean>;
@@ -35,9 +47,9 @@ interface SimProps {
 }
 
 const SEVERITY_STYLES: Record<Diagnostic['severity'], string> = {
-  error: 'bg-red-50 text-red-700 border-red-200',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200',
-  info: 'bg-blue-50 text-blue-700 border-blue-200',
+  error: 'bg-red-50 text-red-700 border-ink',
+  warning: 'bg-amber-50 text-amber-800 border-ink',
+  info: 'bg-blue-50 text-blue-800 border-ink',
 };
 
 function pinTag(pin: PinId | null): string {
@@ -46,6 +58,7 @@ function pinTag(pin: PinId | null): string {
 
 export default function SimulationPanel({
   board,
+  editorMode,
   components,
   pinStates,
   toneStates,
@@ -62,6 +75,7 @@ export default function SimulationPanel({
   onPotChange,
   onApplyFix,
 }: SimProps) {
+  const [openExplainer, setOpenExplainer] = useState<string | null>(null);
   const usedByFor = (self: ComponentInstance): Map<PinId, string> => {
     const used = new Map<PinId, string>();
     for (const other of components) {
@@ -152,7 +166,7 @@ export default function SimulationPanel({
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="p-4 flex-1 overflow-y-auto">
-        <h2 className="font-bold text-gray-800 mb-4 text-lg border-b pb-2">Hardware Setup</h2>
+        <h2 className="font-bold text-ink mb-4 text-lg border-b-2 border-ink pb-2">Hardware Setup</h2>
 
         <div className="mb-4 flex flex-wrap gap-2">
           {PLACEABLE_TYPES.map((type) => (
@@ -160,7 +174,8 @@ export default function SimulationPanel({
               key={type}
               data-testid={`add-${type}`}
               onClick={() => onAddComponent(type)}
-              className="text-xs px-2.5 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium"
+              title={COMPONENT_EXPLAINERS[type].beginner}
+              className="ss-btn ss-btn-ghost text-xs px-2.5 py-1.5"
             >
               + {COMPONENT_LABELS[type]}
             </button>
@@ -173,9 +188,20 @@ export default function SimulationPanel({
 
         <div className="space-y-3 mb-6">
           {components.map((instance) => (
-            <div key={instance.id} data-testid={`component-${instance.id}`} className="border border-gray-200 rounded-lg p-3 bg-white">
+            <div key={instance.id} data-testid={`component-${instance.id}`} className="ss-card p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-gray-700">{instance.displayName}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-ink">{instance.displayName}</span>
+                  <button
+                    data-testid={`explain-${instance.id}`}
+                    onClick={() => setOpenExplainer((open) => (open === instance.id ? null : instance.id))}
+                    aria-label={`What is a ${COMPONENT_LABELS[instance.type as PlaceableComponentType]}?`}
+                    title="What is this?"
+                    className="w-5 h-5 inline-flex items-center justify-center rounded-full border-2 border-ink bg-primary text-[10px] font-bold text-ink hover:bg-primary-deep"
+                  >
+                    ?
+                  </button>
+                </div>
                 <button
                   data-testid={`remove-${instance.id}`}
                   onClick={() => onRemoveComponent(instance.id)}
@@ -185,6 +211,14 @@ export default function SimulationPanel({
                   ✕
                 </button>
               </div>
+              {openExplainer === instance.id && (
+                <p
+                  data-testid={`explainer-${instance.id}`}
+                  className="mb-2 text-xs text-ink bg-primary/20 border-2 border-ink rounded-lg p-2 leading-relaxed"
+                >
+                  {COMPONENT_EXPLAINERS[instance.type as PlaceableComponentType][editorMode]}
+                </p>
+              )}
               <div className="flex justify-center mb-2">{componentVisual(instance)}</div>
               <PinPicker
                 board={board}
@@ -218,7 +252,7 @@ export default function SimulationPanel({
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Diagnostics</h3>
             <ul className="space-y-2">
               {diagnostics.map((d) => (
-                <li key={d.id} className={`text-xs rounded-md border p-2 ${SEVERITY_STYLES[d.severity]}`}>
+                <li key={d.id} className={`text-xs rounded-lg border-2 p-2 ${SEVERITY_STYLES[d.severity]}`}>
                   <span className="font-semibold">{d.title}.</span> {d.message}
                   {d.fix && (
                     <button

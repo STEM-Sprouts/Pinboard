@@ -7,13 +7,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#1B4FDB',
-        accent: '#007A5C',
-        background: '#F7F7F7',
+        primary: '#57BE6C',
+        'primary-deep': '#3EA254',
+        ink: '#111111',
+        accent: '#57BE6C',
+        background: '#FAFAF8',
         surface: '#FFFFFF',
       },
       fontFamily: {
-        sans: ['Lato', 'sans-serif'],
+        sans: ['Poppins', 'system-ui', 'sans-serif'],
         mono: ['"Source Code Pro"', 'monospace'],
       },
     },

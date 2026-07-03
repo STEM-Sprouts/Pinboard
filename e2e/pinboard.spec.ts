@@ -288,17 +288,41 @@ test.describe('components', () => {
 });
 
 test.describe('lessons', () => {
-  test('the Blink lesson checks pass against the starter project', async ({ page }) => {
+  test('the Blink lesson walks step-by-step and its checks pass', async ({ page }) => {
     await page.getByTestId('lessons-toggle').click();
     await expect(page.getByTestId('lesson-panel')).toBeVisible();
+    // The lesson panel docks beside the workspace — the toolbox stays usable.
+    await expect(page.locator('.blocklyToolbox')).toBeVisible();
     await page.getByTestId('lesson-item-blink-led').click();
+
+    // Tutorial flow: one step at a time, hints hidden until asked.
+    await expect(page.getByTestId('lesson-progress')).toContainText('Step 1 of');
+    await expect(page.getByTestId('lesson-prev')).toBeDisabled();
+    const next = page.getByTestId('lesson-next');
+    while (await next.isEnabled()) {
+      await next.click();
+    }
+    // Last stage is "check my work".
     await page.getByTestId('check-work').click();
     // "really-blinks" runs the program headless on the synthetic clock.
     for (const id of ['led-exists', 'led-on-d13', 'writes-d13', 'uses-delay', 'really-blinks']) {
       await expect(page.getByTestId(`check-${id}`)).toHaveAttribute('data-passed', 'true', { timeout: 20_000 });
     }
-    // Progress persists into the project document.
+    // All green → the celebration shows; progress persists locally.
+    await expect(page.getByTestId('lesson-complete')).toBeVisible();
     await expect(page.getByTestId('save-note')).toHaveText('Saved locally');
+  });
+
+  test('hardware explainers match the editor mode', async ({ page }) => {
+    await page.getByTestId('explain-starter-led').click();
+    const explainer = page.getByTestId('explainer-starter-led');
+    await expect(explainer).toContainText('A tiny light');
+
+    await page.getByTestId('editor-mode').selectOption('advanced');
+    await expect(explainer).toContainText('series resistor');
+
+    await page.getByTestId('explain-starter-led').click();
+    await expect(explainer).toHaveCount(0);
   });
 });
 

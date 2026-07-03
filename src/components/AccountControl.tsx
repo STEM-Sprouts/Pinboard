@@ -27,7 +27,7 @@ export default function AccountControl() {
         <span className="text-gray-500" data-testid="account-email">{user.email ?? 'Signed in'}</span>
         <button
           onClick={() => void signOut()}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+          className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm"
         >
           <LogOut size={14} /> Sign out
         </button>
@@ -45,7 +45,7 @@ export default function AccountControl() {
             if (error) setNote('Sign-in unavailable — your work stays saved locally.');
           });
         }}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+        className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm"
       >
         <LogIn size={14} /> Sign in
       </button>

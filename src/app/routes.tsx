@@ -59,14 +59,14 @@ export function ProjectsPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Your projects</h1>
+      <h1 className="text-2xl font-bold text-ink mb-1">Your projects</h1>
       <p className="text-sm text-gray-500 mb-6">
         Stored in this browser{cloudProjects.length > 0 ? ' and your account' : ''}. Export a{' '}
         <code>.pinboard.json</code> from the editor for a durable backup.
       </p>
       <Link
         to="/editor/new"
-        className="inline-block mb-6 px-4 py-2 bg-accent text-white rounded-md font-semibold hover:bg-[#00654c]"
+        className="ss-btn ss-btn-primary inline-flex mb-6 px-4 py-2"
       >
         Start building
       </Link>
@@ -76,7 +76,7 @@ export function ProjectsPage() {
           <li key={doc.metadata.id}>
             <Link
               to={`/editor/${doc.metadata.id}`}
-              className="block px-4 py-3 bg-surface border border-gray-200 rounded-md hover:border-gray-400"
+              className="ss-card block px-4 py-3 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0_#111] transition-all"
             >
               <span className="font-medium text-gray-800">{doc.metadata.title}</span>
               {doc.metadata.cloudProjectId && <span className="ml-2 text-xs text-blue-600">☁ synced</span>}
@@ -90,7 +90,7 @@ export function ProjectsPage() {
           <li key={`cloud-${project.document.metadata.id}`}>
             <button
               onClick={() => openCloudProject(project)}
-              className="w-full text-left px-4 py-3 bg-surface border border-blue-200 rounded-md hover:border-blue-400"
+              className="ss-card w-full text-left px-4 py-3 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0_#111] transition-all"
             >
               <span className="font-medium text-gray-800">{project.document.metadata.title}</span>
               <span className="ml-2 text-xs text-blue-600">☁ cloud</span>
@@ -128,7 +128,7 @@ export function AuthCallbackPage() {
 export function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">Settings</h1>
+      <h1 className="text-2xl font-bold text-ink mb-2">Settings</h1>
       <p className="text-sm text-gray-500">
         Account settings arrive with cloud save. Everything else lives in the editor —{' '}
         <Link to="/" className="text-accent underline">

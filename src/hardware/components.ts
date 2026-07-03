@@ -95,3 +95,50 @@ export function createComponent(
     pins: { signal: pin },
   };
 }
+
+/**
+ * "What is this?" explainers, keyed to the editor mode: beginner text is for
+ * a kid meeting the part for the first time; intermediate adds the
+ * electrical idea; advanced talks real numbers (shown via the ⓘ popup in
+ * the hardware panel).
+ */
+export const COMPONENT_EXPLAINERS: Record<
+  PlaceableComponentType,
+  Record<'beginner' | 'intermediate' | 'advanced', string>
+> = {
+  led: {
+    beginner: 'A tiny light! Turn its pin ON and it glows. Great for showing that your program is doing something.',
+    intermediate:
+      'A Light-Emitting Diode — it glows when electricity flows through it one way. Writing HIGH to its pin lights it (unless it is wired active-low). Real LEDs need a resistor so they do not burn out.',
+    advanced:
+      'A diode that emits light. Forward voltage ≈2 V, so a series resistor (220 Ω from 5 V) limits current to ~15 mA. Active-low wiring inverts the logic: LOW = lit, and brightness 255 means off.',
+  },
+  button: {
+    beginner: 'A push button — press it to tell your program something, like a doorbell!',
+    intermediate:
+      'A switch that connects the pin to ground while pressed. With the internal pull-up resistor, the pin reads HIGH when idle and LOW when pressed — that is why "is pressed?" checks for LOW.',
+    advanced:
+      'A momentary switch. INPUT_PULLUP holds the line HIGH through ~20 kΩ; pressing shorts it to GND (reads LOW). External pull-down flips the logic. Real buttons bounce for a few ms — debounce if you count presses.',
+  },
+  potentiometer: {
+    beginner: 'A twisty knob! Turn it and your program gets a number from 0 (one end) to 1023 (the other end).',
+    intermediate:
+      'A variable resistor. Its middle pin outputs a voltage between 0 V and 5 V as you turn it, and analogRead turns that voltage into a number from 0 to 1023.',
+    advanced:
+      'A voltage divider: the wiper taps a fraction of 5 V. The Uno’s 10-bit ADC maps 0–5 V to 0–1023. Use map() to rescale, and expect ±1 count of jitter on real hardware.',
+  },
+  buzzer: {
+    beginner: 'A little speaker. Tell it a note and it beeps until you tell it to stop!',
+    intermediate:
+      'A piezo buzzer. tone(pin, frequency) makes it vibrate that many times per second — 440 is the musical note A. noTone() makes it quiet again.',
+    advanced:
+      'A passive piezo driven by the square wave from tone() (Timer2 on the Uno — it can disturb PWM on D3/D11). Useful range is roughly 31 Hz to a few kHz; volume is fixed.',
+  },
+  servo: {
+    beginner: 'A robot-arm motor! Tell it an angle from 0 to 180 and it turns right there and holds on.',
+    intermediate:
+      'A motor with position control built in. servo.write(angle) sends the arm to that angle. It needs attach() in setup() — Pinboard writes that line for you.',
+    advanced:
+      'A hobby servo: a 50 Hz control pulse of 1–2 ms maps to 0–180°. The Servo library uses Timer1 (can disturb PWM on D9/D10). On real hardware, power it from 5 V, never from a signal pin.',
+  },
+};

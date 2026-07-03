@@ -65,11 +65,16 @@ export default function BlocklyWorkspace({
 
     const onResize = () => Blockly.svgResize(workspace);
     window.addEventListener('resize', onResize);
+    // Container size also changes when panels dock/undock (lesson drawer) —
+    // observe it so the canvas always fills the visible area.
+    const observer = new ResizeObserver(onResize);
+    observer.observe(blocklyDiv.current);
     // Initial resize to ensure layout catches up
     setTimeout(onResize, 100);
 
     return () => {
       window.removeEventListener('resize', onResize);
+      observer.disconnect();
       workspace.dispose();
       workspaceRef.current = null;
     };

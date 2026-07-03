@@ -84,7 +84,7 @@ export default function CodePreview({ code, highlight }: { code: string; highlig
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 flex justify-between items-center text-sm font-semibold text-gray-700">
+      <div className="px-4 py-2 bg-surface border-y-2 border-ink flex justify-between items-center text-sm font-bold text-ink">
         <span>Arduino C Preview</span>
         <span className="text-xs font-normal text-gray-600">read-only — generated from your blocks</span>
       </div>

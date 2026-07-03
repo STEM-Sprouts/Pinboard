@@ -432,7 +432,20 @@ function App({ localId }: { localId?: string } = {}) {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-[2] flex border-r border-gray-200 relative min-w-0 min-h-0 overflow-hidden">
+        {lessonOpen && (
+          <div className="w-80 shrink-0 min-h-0">
+            <LessonPanel
+              lessons={lessons}
+              activeLessonId={activeLessonId}
+              checkResults={checkResults}
+              checking={checking}
+              onSelectLesson={handleSelectLesson}
+              onCheckWork={handleCheckWork}
+              onClose={() => setLessonOpen(false)}
+            />
+          </div>
+        )}
+        <div className="flex-[2] flex border-r-2 border-ink relative min-w-0 min-h-0 overflow-hidden">
           <BlocklyWorkspace
             key={`${loadedProject.metadata.id}:${workspaceNonce}`}
             initialWorkspace={loadedProject.workspace.data as BlocklyWorkspaceJson}
@@ -440,24 +453,12 @@ function App({ localId }: { localId?: string } = {}) {
             onWorkspaceChange={handleWorkspaceChange}
             onSelectionChange={handleBlockSelection}
           />
-          {lessonOpen && (
-            <div className="absolute left-0 top-0 bottom-0 w-80 z-20 border-r border-gray-200 shadow-lg">
-              <LessonPanel
-                lessons={lessons}
-                activeLessonId={activeLessonId}
-                checkResults={checkResults}
-                checking={checking}
-                onSelectLesson={handleSelectLesson}
-                onCheckWork={handleCheckWork}
-                onClose={() => setLessonOpen(false)}
-              />
-            </div>
-          )}
         </div>
 
-        <div className="w-[340px] flex-shrink-0 bg-surface flex flex-col border-r border-gray-200 overflow-y-auto">
+        <div className="w-[340px] flex-shrink-0 bg-surface flex flex-col overflow-y-auto">
           <SimulationPanel
             board={arduinoUno}
+            editorMode={editorMode}
             components={components}
             pinStates={pinStates}
             toneStates={toneStates}
@@ -477,7 +478,7 @@ function App({ localId }: { localId?: string } = {}) {
         </div>
       </div>
 
-      <div className="h-56 border-t border-gray-200 bg-surface shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 w-full">
+      <div className="h-56 bg-surface z-10 w-full">
         <CodePreview code={printed.code} highlight={highlightRange} />
       </div>
 
