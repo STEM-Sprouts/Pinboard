@@ -77,14 +77,15 @@ export const lessons: Lesson[] = [
         id: 'count',
         title: 'Count the blinks',
         instructions:
-          'Run the starter program and count blinks for five seconds. Each delay is 500 ms, so one full blink takes a second.',
+          'Run the starter program and count blinks for five seconds. Each delay is 500 ms, so one full blink takes a second — you should count about five.',
         hints: [],
         locate: 'delay',
       },
       {
         id: 'both',
         title: 'Change both delays',
-        instructions: 'Change BOTH delay blocks to 100 and run again. The preview shows delay(100); — the number you typed.',
+        instructions:
+          'Change BOTH delay blocks to 100 and run again. The preview shows delay(100); — the number you typed. Count again: about 25 blinks in five seconds.',
         hints: ['delay() pauses the whole program — while it waits, nothing else happens.'],
         locate: 'delay',
       },
@@ -147,7 +148,7 @@ export const lessons: Lesson[] = [
         id: 'surprise',
         title: 'Find the surprise',
         instructions:
-          'Run it and hold the virtual button. The LED lights — but it never turns off again! You told the program when to turn the LED on, but never when to turn it off. Fix it with a second if.',
+          'Run it and hold the virtual button. The LED lights — but it never turns off again! You told the program when to turn the LED on, but never when to turn it off. Fix it: from Logic, use an "if … do … else" block instead, with "turn LED 1 off" in the else slot. (A second if with a "not" block around "Button 1 is pressed?" works too.)',
         hints: [
           'Look at the code preview: if (digitalRead(2) == LOW). Pressed reads LOW — that is the internal pull-up resistor at work.',
         ],
@@ -205,7 +206,10 @@ export const lessons: Lesson[] = [
         title: 'Map knob to brightness',
         instructions:
           'Clear the loop. Drag "set LED brightness to" into the loop and drop "map POT to 0 – 255" into its slot.',
-        hints: ['The preview shows one line: analogWrite(9, map(analogRead(A0), 0, 1023, 0, 255));'],
+        hints: [
+          'The preview shows one line: analogWrite(9, map(analogRead(A0), 0, 1023, 0, 255));',
+          'LED always off or never changing? Check the potentiometer is on A0, and that the map block ends at 255, not 1023.',
+        ],
       },
       {
         id: 'turn',
@@ -339,7 +343,10 @@ export const lessons: Lesson[] = [
         id: 'run',
         title: 'Run the sweep',
         instructions: 'Run. The arm steps 0, 30, 60 … 180, then repeats because loop() runs the for-loop again.',
-        hints: ['Extension: sweep back down with a second for-loop from 180 to 0 by -30.'],
+        hints: [
+          'Arm not moving? Check the Servo is connected to D9 and the for-loop is inside loop.',
+          'Extension: sweep back down with a second for-loop from 180 to 0 by -30.',
+        ],
         locate: 'for',
       },
     ],
@@ -376,7 +383,7 @@ export const lessons: Lesson[] = [
         id: 'add-buzzer',
         title: 'Add a buzzer',
         instructions:
-          'Add a Buzzer — it defaults to D8, away from pins where tone() can fight the PWM timer (D3/D11 — move it there later and read the warning).',
+          'Add a Buzzer — it defaults to D8. D8 is a safe choice: on the Uno, tone() can fight the PWM timer on D3 and D11 (move it there later and read the warning).',
         hints: [],
         locate: 'buzzer',
       },
@@ -392,7 +399,10 @@ export const lessons: Lesson[] = [
         title: 'Sound keeps going by itself',
         instructions:
           'Read the preview: tone(8, 880); keeps sounding until you change or stop it. The waits set the rhythm, not the sound.',
-        hints: ['Add "stop Buzzer 1" and a wait to put silence in the pattern.'],
+        hints: [
+          'Add "stop Buzzer 1" and a wait to put silence in the pattern.',
+          'Extension: a rising alarm — 440, 660, then 880 Hz.',
+        ],
         locate: 'tone',
       },
     ],
