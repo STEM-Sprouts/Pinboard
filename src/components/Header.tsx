@@ -9,24 +9,24 @@ interface HeaderProps {
 export default function Header({ editorBasePath, onInfoClick }: HeaderProps) {
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     [
-      'px-3 py-2 text-sm font-semibold border-b-2 transition-colors',
+      'px-2 sm:px-3 py-2 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap',
       isActive ? 'border-ink text-ink' : 'border-transparent text-gray-500 hover:text-ink',
     ].join(' ');
 
   return (
-    <header className="h-16 bg-surface border-b-2 border-ink flex items-center justify-between px-4 gap-4 z-10">
+    <header className="h-16 bg-surface border-b-2 border-ink flex items-center justify-between px-2 sm:px-4 gap-2 sm:gap-4 z-10">
       <div className="flex items-center gap-3 shrink-0">
         <div className="rounded-2xl border-2 border-ink bg-white px-2 py-1 shadow-[3px_3px_0_#111]">
           <img
             src={pinboardLogo}
             alt="Pinboard"
-            className="h-9 w-auto max-w-[220px] object-contain"
+            className="h-7 sm:h-9 w-auto max-w-[220px] object-contain"
           />
         </div>
         <h1 className="sr-only">Pinboard</h1>
       </div>
 
-      <nav className="flex items-center gap-2 min-w-0">
+      <nav className="flex items-center gap-0 sm:gap-2 min-w-0 overflow-x-auto">
         <NavLink to={editorBasePath} end className={tabClass}>
           Build
         </NavLink>
@@ -43,7 +43,7 @@ export default function Header({ editorBasePath, onInfoClick }: HeaderProps) {
 
       <button
         onClick={onInfoClick}
-        className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm"
+        className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm shrink-0"
         aria-label="Open info"
       >
         Info
