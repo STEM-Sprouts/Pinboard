@@ -42,6 +42,19 @@ export function ledIsActiveHigh(instance: ComponentInstance): boolean {
   return instance.config.activeHigh !== false;
 }
 
+/**
+ * How lit an LED looks, 0–1. A PWM duty (analogWrite, 0–255) wins over the
+ * digital level so dimming is visible; wiring polarity flips both.
+ */
+export function ledBrightness(level: boolean | undefined, pwmDuty: number | undefined, activeHigh: boolean): number {
+  if (pwmDuty !== undefined) {
+    const duty = Math.min(255, Math.max(0, pwmDuty)) / 255;
+    return activeHigh ? duty : 1 - duty;
+  }
+  if (level === undefined) return 0;
+  return level === activeHigh ? 1 : 0;
+}
+
 export function buttonUsesPullup(instance: ComponentInstance): boolean {
   return instance.config.pullMode !== 'external_pulldown';
 }
