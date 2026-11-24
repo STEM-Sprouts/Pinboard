@@ -97,6 +97,7 @@ export type EditorOutletContext = {
   printed: ReturnType<typeof printArduino>;
   diagnostics: ReturnType<typeof analyzeProgramDiagnostics>;
   pinStates: Record<string, boolean>;
+  pwmStates: Record<string, number>;
   toneStates: Record<string, number | null>;
   servoAngles: Record<string, number>;
   buttonPressed: Record<string, boolean>;
@@ -151,6 +152,7 @@ function App({ localId }: { localId?: string } = {}) {
   const projectRef = useRef(loadedProject);
   const [emulatorStatus, setEmulatorStatus] = useState<'idle' | 'compiling' | 'running' | 'error'>('idle');
   const [pinStates, setPinStates] = useState<Record<string, boolean>>({});
+  const [pwmStates, setPwmStates] = useState<Record<string, number>>({});
   const [toneStates, setToneStates] = useState<Record<string, number | null>>({});
   const [servoAngles, setServoAngles] = useState<Record<string, number>>({});
   const [buttonPressed, setButtonPressed] = useState<Record<string, boolean>>({});
@@ -318,6 +320,7 @@ function App({ localId }: { localId?: string } = {}) {
     schedulerRef.current?.stop();
     detachRuntimeListeners();
     setPinStates({});
+    setPwmStates({});
     setToneStates({});
     setServoAngles({});
     setSerialOutput([]);
@@ -336,7 +339,16 @@ function App({ localId }: { localId?: string } = {}) {
 
     unsubscribersRef.current.push(
       scheduler.ctx.pins.onChange((event) => {
-        if (event.kind === 'digital') setPinStates((prev) => ({ ...prev, [event.pin]: event.value as boolean }));
+        if (event.kind === 'digital') {
+          setPinStates((prev) => ({ ...prev, [event.pin]: event.value as boolean }));
+          // A digitalWrite after an analogWrite takes the pin back from PWM.
+          setPwmStates((prev) => {
+            if (!(event.pin in prev)) return prev;
+            const rest = { ...prev };
+            delete rest[event.pin];
+            return rest;
+          });
+        } else if (event.kind === 'pwm') setPwmStates((prev) => ({ ...prev, [event.pin]: event.value as number }));
         else if (event.kind === 'tone') setToneStates((prev) => ({ ...prev, [event.pin]: event.value as number | null }));
         else if (event.kind === 'servo') setServoAngles((prev) => ({ ...prev, [event.pin]: event.value as number }));
       }),
@@ -365,6 +377,7 @@ function App({ localId }: { localId?: string } = {}) {
     schedulerRef.current = null;
     setEmulatorStatus('idle');
     setPinStates({});
+    setPwmStates({});
     setToneStates({});
     setServoAngles({});
     setSerialOutput([]);
@@ -508,6 +521,7 @@ function App({ localId }: { localId?: string } = {}) {
     printed,
     diagnostics,
     pinStates,
+    pwmStates,
     toneStates,
     servoAngles,
     buttonPressed,
@@ -591,23 +605,23 @@ function BottomActionBar({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   return (
-    <footer className="h-16 bg-surface border-t-2 border-ink flex items-center justify-between px-4 gap-3 z-10">
+    <footer className="h-16 bg-surface border-t-2 border-ink flex items-center justify-between px-2 sm:px-4 gap-2 sm:gap-3 z-10">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center text-sm font-semibold border-2 border-ink bg-surface px-3 py-1 rounded-full shrink-0">
+        <div title={status} className="flex items-center text-sm font-semibold border-2 border-ink bg-surface px-2.5 sm:px-3 py-1 rounded-full shrink-0">
           <span
-            className={`w-2.5 h-2.5 rounded-full mr-2 ${
+            className={`w-2.5 h-2.5 rounded-full sm:mr-2 ${
               status === 'running' ? 'bg-primary animate-pulse' : status === 'error' ? 'bg-red-500' : 'bg-gray-400'
             }`}
           />
-          <span data-testid="emulator-status" className="capitalize text-ink">{status}</span>
+          <span data-testid="emulator-status" className="hidden sm:inline capitalize text-ink">{status}</span>
         </div>
-        <span data-testid="save-note" className="text-xs font-medium text-gray-500 truncate">{saveNote}</span>
+        <span data-testid="save-note" className="hidden md:block text-xs font-medium text-gray-500 truncate">{saveNote}</span>
       </div>
-      <div className="flex items-center gap-2.5">
-        <button onClick={onRun} disabled={status === 'running' || status === 'compiling'} className="ss-btn ss-btn-primary px-4 py-1.5 text-sm">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <button onClick={onRun} disabled={status === 'running' || status === 'compiling'} className="ss-btn ss-btn-primary px-3 sm:px-4 py-1.5 text-sm">
           <Play size={16} /> Run
         </button>
-        <button onClick={onStop} disabled={status !== 'running'} className="ss-btn px-4 py-1.5 text-sm bg-red-100 hover:bg-red-200">
+        <button onClick={onStop} disabled={status !== 'running'} className="ss-btn px-3 sm:px-4 py-1.5 text-sm bg-red-100 hover:bg-red-200">
           <Square size={16} /> Stop
         </button>
         <button onClick={onReset} className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm" title="Reset simulation">
@@ -615,8 +629,8 @@ function BottomActionBar({
         </button>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <button onClick={() => fileInputRef.current?.click()} className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm">
-          <Upload size={15} /> Import
+        <button onClick={() => fileInputRef.current?.click()} className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm" title="Import project">
+          <Upload size={15} /> <span className="hidden sm:inline">Import</span>
         </button>
         <input
           ref={fileInputRef}
@@ -630,8 +644,8 @@ function BottomActionBar({
             e.target.value = '';
           }}
         />
-        <button onClick={onExport} className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm">
-          <Download size={15} /> Export
+        <button onClick={onExport} className="ss-btn ss-btn-ghost px-3 py-1.5 text-sm" title="Export project">
+          <Download size={15} /> <span className="hidden sm:inline">Export</span>
         </button>
       </div>
     </footer>
@@ -660,6 +674,7 @@ export function EditorBuildPage() {
             editorMode={ctx.editorMode}
             components={ctx.components}
             pinStates={ctx.pinStates}
+            pwmStates={ctx.pwmStates}
             toneStates={ctx.toneStates}
             servoAngles={ctx.servoAngles}
             buttonPressed={ctx.buttonPressed}
