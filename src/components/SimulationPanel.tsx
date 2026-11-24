@@ -12,6 +12,7 @@ import SerialMonitor from './SerialMonitor';
 import {
   allowedPins,
   buttonUsesPullup,
+  ledBrightness,
   ledIsActiveHigh,
   signalPin,
   COMPONENT_EXPLAINERS,
@@ -29,6 +30,8 @@ interface SimProps {
   components: ComponentInstance[];
   /** Electrical digital level per pin, from the runtime's pin store. */
   pinStates: Record<string, boolean>;
+  /** Latest analogWrite duty (0–255) per pin; wins over the digital level. */
+  pwmStates: Record<string, number>;
   /** Active tone frequency per pin (null = silent), from tone/noTone. */
   toneStates: Record<string, number | null>;
   /** Servo angle per pin, 0–180, from servo writes. */
@@ -61,6 +64,7 @@ export default function SimulationPanel({
   editorMode,
   components,
   pinStates,
+  pwmStates,
   toneStates,
   servoAngles,
   buttonPressed,
@@ -91,8 +95,9 @@ export default function SimulationPanel({
     switch (instance.type) {
       case 'led': {
         const level = pin ? pinStates[pin] : undefined;
-        const lit = level === undefined ? false : level === ledIsActiveHigh(instance);
-        return <LED label={pinTag(pin)} state={lit} testId={`led-${pinSuffix}`} />;
+        const duty = pin ? pwmStates[pin] : undefined;
+        const brightness = ledBrightness(level, duty, ledIsActiveHigh(instance));
+        return <LED label={pinTag(pin)} brightness={brightness} testId={`led-${pinSuffix}`} />;
       }
       case 'button':
         return (
