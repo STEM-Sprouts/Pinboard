@@ -285,6 +285,91 @@ test.describe('components', () => {
     await expect(led13(page)).toHaveAttribute('data-state', 'on');
     await page.getByTestId('virtual-button-2').dispatchEvent('mouseup');
   });
+
+  test('potentiometer dims the LED — analogWrite shows as brightness, not just on/off', async ({ page }) => {
+    const doc = {
+      schemaVersion: 1,
+      appVersion: '0.1.0',
+      metadata: {
+        id: 'e2e-pot-dimmer',
+        title: 'Potentiometer Dimmer',
+        createdAt: '2026-07-02T00:00:00.000Z',
+        updatedAt: '2026-07-02T00:00:00.000Z',
+      },
+      board: { id: 'arduino-uno', fqbn: 'arduino:avr:uno' },
+      workspace: {
+        format: 'blockly-json',
+        data: {
+          blocks: {
+            languageVersion: 0,
+            blocks: [
+              {
+                type: 'arduino_loop',
+                id: 'bl_loop',
+                x: 40,
+                y: 40,
+                inputs: {
+                  DO: {
+                    block: {
+                      type: 'led_brightness',
+                      id: 'bl_dim',
+                      fields: { COMPONENT: 'imp-led' },
+                      inputs: {
+                        VALUE: { block: { type: 'pot_map', id: 'bl_map', fields: { COMPONENT: 'imp-pot', LOW: 0, HIGH: 255 } } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      hardware: {
+        components: [
+          {
+            id: 'imp-led',
+            type: 'led',
+            displayName: 'LED 1',
+            position: { x: 0, y: 0 },
+            config: { color: 'red', activeHigh: true },
+            pins: { signal: 'D9' },
+          },
+          {
+            id: 'imp-pot',
+            type: 'potentiometer',
+            displayName: 'Potentiometer 1',
+            position: { x: 0, y: 0 },
+            config: {},
+            pins: { signal: 'A0' },
+          },
+        ],
+        wiring: [],
+      },
+      settings: { editorMode: 'beginner', simulationSpeed: 1, showAdvancedBlocks: false },
+    };
+
+    await page.getByTestId('import-input').setInputFiles({
+      name: 'pot-dimmer.pinboard.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(doc)),
+    });
+    await expect(page.getByTestId('save-note')).toHaveText('Project imported');
+    await expect(page.getByTestId('code-preview')).toContainText('analogWrite(9,');
+
+    await startEmulator(page);
+    const led9 = page.getByTestId('led-9');
+    const brightness = async () => Number(await led9.getAttribute('data-brightness'));
+
+    await page.getByTestId('pot-A0').fill('1023');
+    await expect.poll(brightness).toBeCloseTo(1, 1);
+    await page.getByTestId('pot-A0').fill('512');
+    await expect.poll(brightness).toBeGreaterThan(0.3);
+    await expect.poll(brightness).toBeLessThan(0.7);
+    await page.getByTestId('pot-A0').fill('0');
+    await expect.poll(brightness).toBe(0);
+    await expect(led9).toHaveAttribute('data-state', 'off');
+  });
 });
 
 test.describe('lessons', () => {
